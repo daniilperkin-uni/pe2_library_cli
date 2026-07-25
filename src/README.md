@@ -14,10 +14,10 @@ git clone <repository-url>
 
 Change into the project directory and build with Maven:
 
-cd team92
+cd pe2_library_cli
 mvn clean install
 
-After a successful build, the application JAR file will be generated in the target directory under the name team92-1.0-SNAPSHOT.jar.
+After a successful build, the application JAR file will be generated in the target directory under the name library-cli-1.0-SNAPSHOT.jar.
 
 Project Configuration
 
@@ -26,7 +26,7 @@ All build and dependency settings are defined in the pom.xml file. The project u
 <project xmlns="http://maven.apache.org/POM/4.0.0" ...>
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
-  <artifactId>team92</artifactId>
+  <artifactId>pe2_library_cli</artifactId>
   <version>1.0-SNAPSHOT</version>
 
   <dependencies>
@@ -65,7 +65,7 @@ Usage
 
 Start the application by running the JAR file:
 
-java -jar target/team92-1.0-SNAPSHOT.jar
+java -jar target/library-cli-1.0-SNAPSHOT.jar
 
 Upon launch, a text-based menu is displayed. Select options by entering the corresponding number and pressing Enter.
 
@@ -143,7 +143,7 @@ Current coverage metrics are approximately 95 percent of classes and 80 percent 
 
 Project Structure
 
-team92/
+pe2_library_cli/
 
 .github/workflows/ci.yml (CI pipeline configuration)
 
@@ -181,9 +181,7 @@ Open a pull request describing the changes.
 
 Authors
 
-Vladyslav Handzha
-
-Daniil Perkin
-
-NOT Boyan Wang
+- [Author 1]
+- [Author 2]
+- [Author 3]
 

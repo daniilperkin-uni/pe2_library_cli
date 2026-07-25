@@ -1,9 +1,9 @@
-# LibraryCLI (team92)
+# LibraryCLI (pe2_library_cli)
 
 **Team Members:**
-- Daniil Perkin (st194422@stud.uni-stuttgart.de)
-- Vladyslav Handzha (st192994@stud.uni-stuttgart.de)
-- Boyang Wang (st182103@stud.uni-stuttgart.de)
+- [Author 1]
+- [Author 2]
+- [Author 3]
 
 ---
 
@@ -24,18 +24,18 @@ git clone <repository-url>
 Change into the project directory and build with Maven:
 
 ```bash
-cd team92
+cd pe2_library_cli
 mvn clean install
 ```
 
-After a successful build, the application JAR file will be generated in the target directory under the name `team92-1.0-SNAPSHOT.jar`.
+After a successful build, the application JAR file will be generated in the target directory under the name `library-cli-1.0-SNAPSHOT.jar`.
 
 ## Usage
 
 Start the application by running the JAR file:
 
 ```bash
-java -jar target/team92-1.0-SNAPSHOT.jar
+java -jar target/library-cli-1.0-SNAPSHOT.jar
 ```
 
 Upon launch, a text-based menu is displayed. Select options by entering the corresponding number and pressing Enter.
