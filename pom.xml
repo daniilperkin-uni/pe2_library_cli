@@ -10,8 +10,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <!-- zentrale JUnit-BOM für einheitliche Versionierung -->
         <junit.version>5.11.4</junit.version>
     </properties>
@@ -39,17 +39,15 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
         </dependency>
-
-        <!-- (Optional) TestNG, falls benötigt -->
-        <!--
+        <!-- AssertJ für flüssige Test-Assertions -->
         <dependency>
-          <groupId>org.testng</groupId>
-          <artifactId>testng</artifactId>
-          <version>7.9.0</version>
-          <scope>test</scope>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.26.3</version>
+            <scope>test</scope>
         </dependency>
-        -->
     </dependencies>
 
     <build>
@@ -68,7 +66,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>3.5.2</version>
                 <configuration>
                     <!-- Alte JUnit 4-/Vintage-Engines ausschließen -->
                     <excludedGroups>junit.vintage</excludedGroups>

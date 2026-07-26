@@ -1,0 +1,3 @@
+id,name,firstName,address,zipCode,city,feesPayed
+123,Mustermann,Max,Teststraße 1,12345,Musterstadt,yes
+2,Schmidt,Anna,Beispielweg 42,54321,Musterstadt,no
