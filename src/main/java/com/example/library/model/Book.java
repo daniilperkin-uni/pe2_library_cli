@@ -1,5 +1,7 @@
 package com.example.library.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,7 +35,8 @@ public class Book {
                 String city, String publisher, int edition) {
         this.isbn = isbn;
         this.title = title;
-        this.authors = authors;
+        // defensive copy so callers cannot mutate the book's authors after construction
+        this.authors = new ArrayList<>(authors);
         this.year = year;
         this.city = city;
         this.publisher = publisher;
@@ -64,7 +67,7 @@ public class Book {
      * @return an unmodifiable view of the authors list
      */
     public List<String> getAuthors() {
-        return authors;
+        return Collections.unmodifiableList(authors);
     }
 
     /**
@@ -110,6 +113,6 @@ public class Book {
      */
     @Override
     public String toString() {
-        return String.format("Titel: %s | Autor: %s | Year: %d | isbn: %s", title, authors, year, isbn);
+        return String.format("Titel: %s | Autor: %s | Jahr: %d | isbn: %s", title, authors, year, isbn);
     }
 }
