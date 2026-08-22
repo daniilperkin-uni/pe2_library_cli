@@ -24,6 +24,9 @@ Desktop.ini
 # Logs
 *.log
 
+# Course PDFs (archived outside the repo, not part of the source tree)
+*.pdf
+
 # Secrets / env
 .env
 .env.*
