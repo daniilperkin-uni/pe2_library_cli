@@ -3,6 +3,7 @@ package com.example.library.cli;
 import com.example.library.manager.BookCopyManager;
 import com.example.library.manager.BookManager;
 import com.example.library.manager.CustomerManager;
+import com.example.library.manager.ReservationManager;
 import com.example.library.service.LoanService;
 import com.example.library.service.ReportService;
 
@@ -27,6 +28,7 @@ public class LibraryCLI {
     private final BookManager bookManager;
     private final BookCopyManager bookCopyManager;
     private final CustomerManager customerManager;
+    private final ReservationManager reservationManager;
     private final LoanService loanService;
     private final ReportService reportService;
     private final Scanner scanner;
@@ -42,11 +44,13 @@ public class LibraryCLI {
      * @param scanner         the scanner used to read user input
      */
     public LibraryCLI(BookManager bookManager, BookCopyManager bookCopyManager,
-                      CustomerManager customerManager, LoanService loanService,
+                      CustomerManager customerManager, ReservationManager reservationManager,
+                      LoanService loanService,
                       ReportService reportService, Scanner scanner) {
         this.bookManager = bookManager;
         this.bookCopyManager = bookCopyManager;
         this.customerManager = customerManager;
+        this.reservationManager = reservationManager;
         this.loanService = loanService;
         this.reportService = reportService;
         this.scanner = scanner;
@@ -64,6 +68,7 @@ public class LibraryCLI {
         BookManager bookManager = new BookManager();
         BookCopyManager bookCopyManager = new BookCopyManager();
         CustomerManager customerManager = new CustomerManager();
+        ReservationManager reservationManager = new ReservationManager();
         LoanService loanService = new LoanService(bookCopyManager, customerManager);
         ReportService reportService =
                 new ReportService(bookManager, bookCopyManager, customerManager);
@@ -74,7 +79,7 @@ public class LibraryCLI {
         bookCopyManager.importBookCopies("/buchkopien.csv", bookManager, customerManager);
 
         LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
-                customerManager, loanService, reportService, scanner);
+                customerManager, reservationManager, loanService, reportService, scanner);
         libraryCLI.start();
     }
 
@@ -91,8 +96,9 @@ public class LibraryCLI {
             System.out.println("4. Eine Buchkopie ausleihen");
             System.out.println("5. Eine Buchkopie zurückgeben");
             System.out.println("6. Eine Buchkopie suchen");
-            System.out.println("7. Bericht erstellen");
-            System.out.println("8. Programm beenden");
+            System.out.println("7. Vormerkungen verwalten");
+            System.out.println("8. Bericht erstellen");
+            System.out.println("9. Programm beenden");
 
             int choice = readInt("Wählen Sie eine Option: ");
             switch (choice) {
@@ -115,9 +121,12 @@ public class LibraryCLI {
                     bookCopyManager.searchBookCopies(scanner);
                     break;
                 case 7:
-                    createReport();
+                    manageReservations();
                     break;
                 case 8:
+                    createReport();
+                    break;
+                case 9:
                     System.out.println("Das Programm wird beendet.");
                     running = false;
                     break;
@@ -237,6 +246,99 @@ public class LibraryCLI {
             }
         } catch (IllegalStateException | IllegalArgumentException e) {
             System.out.println(e.getMessage());
+        }
+        promptReturnToMain();
+    }
+
+    /**
+     * Submenu for managing title reservations (the FIFO waiting list for
+     * titles whose copies are all lent out).
+     */
+    public void manageReservations() {
+        int choice = -1;
+        while (choice != 4) {
+            System.out.println("==VORMERKUNGEN VERWALTEN==");
+            System.out.println("1. Titel vormerken");
+            System.out.println("2. Vormerkung stornieren");
+            System.out.println("3. Warteschlange für einen Titel anzeigen");
+            System.out.println("4. Zurück zum Hauptmenü");
+
+            choice = readInt("");
+            switch (choice) {
+                case 1:
+                    reserveTitle();
+                    break;
+                case 2:
+                    cancelReservation();
+                    break;
+                case 3:
+                    showReservationQueue();
+                    break;
+                case 4:
+                    break;
+                default:
+                    System.out.println("Option ist noch nicht implementiert.");
+            }
+        }
+    }
+
+    /**
+     * Places a reservation for a customer on a title that currently has no
+     * available copy.
+     */
+    public void reserveTitle() {
+        int bookId = readInt("Buch-ID des gewünschten Titels: ");
+        if (bookId == -1) {
+            return;
+        }
+        int customerId = readInt("Kunden-ID des Wartenden: ");
+        if (customerId == -1) {
+            return;
+        }
+        try {
+            var reservation = reservationManager.reserve(bookId, customerId);
+            System.out.println("Vormerkung " + reservation.id() + " für Buch "
+                    + bookId + " von Kunde " + customerId + " angelegt.");
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        }
+        promptReturnToMain();
+    }
+
+    /**
+     * Removes a reservation from the queue by its id.
+     */
+    public void cancelReservation() {
+        int reservationId = readInt("Vormerkungs-ID zum Stornieren: ");
+        if (reservationId == -1) {
+            return;
+        }
+        var removed = reservationManager.cancel(reservationId);
+        if (removed.isPresent()) {
+            System.out.println("Vormerkung " + reservationId + " wurde storniert.");
+        } else {
+            System.out.println("Keine Vormerkung mit dieser ID: " + reservationId);
+        }
+        promptReturnToMain();
+    }
+
+    /**
+     * Prints the FIFO queue for one title, earliest reservation first.
+     */
+    public void showReservationQueue() {
+        int bookId = readInt("Buch-ID für die Warteschlange: ");
+        if (bookId == -1) {
+            return;
+        }
+        var queue = reservationManager.queueFor(bookId);
+        if (queue.isEmpty()) {
+            System.out.println("Keine Vormerkungen für Buch " + bookId);
+        } else {
+            System.out.println("Warteschlange für Buch " + bookId + ":");
+            for (var r : queue) {
+                System.out.println("  Vormerkung " + r.id() + " – Kunde "
+                        + r.customerId() + " (seit " + r.createdAt() + ")");
+            }
         }
         promptReturnToMain();
     }
