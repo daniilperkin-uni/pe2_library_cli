@@ -18,6 +18,12 @@ import java.time.LocalDate;
  */
 public class LoanService {
 
+    /** Borrow period in days before a fine accrues. */
+    public static final int LOAN_PERIOD_DAYS = 21;
+
+    /** Fine charged per day a copy is overdue. */
+    public static final double FINE_PER_DAY_EURO = 0.50;
+
     private final BookCopyManager bookCopyManager;
     private final CustomerManager customerManager;
 
@@ -118,5 +124,49 @@ public class LoanService {
         bookCopy.setLoanDate(null);
         bookCopy.setCustomerID(-1);
         customer.removeBookCopy(bookCopy);
+    }
+
+    /**
+     * Computes the late-return fine for a lent book copy.
+     *
+     * <p>Pure function with no side effects: uses the copy's recorded loan
+     * date plus the {@link #LOAN_PERIOD_DAYS} grace period, charged at
+     * {@link #FINE_PER_DAY_EURO} per overdue day. No fine when the copy is
+     * not lent or has no loan date.</p>
+     *
+     * <p>The {@code today} parameter exists so tests can exercise overdue
+     * and within-period cases deterministically; production callers use
+     * {@link #calculateFine(int)}.</p>
+     *
+     * @param copy the book copy to evaluate
+     * @param today reference date for the overdue calculation
+     * @return fine in euro, 0.0 when nothing is due
+     */
+    public double calculateFine(BookCopy copy, LocalDate today) {
+        if (copy == null || !copy.isLent() || copy.getLoanDate() == null) {
+            return 0.0;
+        }
+        long overdueDays = today.toEpochDay() - copy.getLoanDate().plusDays(LOAN_PERIOD_DAYS).toEpochDay();
+        if (overdueDays <= 0) {
+            return 0.0;
+        }
+        return overdueDays * FINE_PER_DAY_EURO;
+    }
+
+    /**
+     * Convenience wrapper for the CLI: computes the fine for the copy with
+     * the given id against the current date.
+     *
+     * @param bookCopyId the ID of the book copy to evaluate
+     * @return fine in euro, 0.0 when the copy is not lent or not overdue
+     * @throws IllegalArgumentException if no copy exists for the id
+     */
+    public double calculateFine(int bookCopyId) {
+        BookCopy bookCopy = bookCopyManager.getBookCopy(bookCopyId);
+        if (bookCopy == null) {
+            throw new IllegalArgumentException(
+                    "Es existiert keine Buchkopie mit dieser ID: " + bookCopyId);
+        }
+        return calculateFine(bookCopy, LocalDate.now());
     }
 }

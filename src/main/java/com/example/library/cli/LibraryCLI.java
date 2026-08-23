@@ -225,9 +225,16 @@ public class LibraryCLI {
             return;
         }
         try {
+            double fine = loanService.calculateFine(bookCopyId);
             loanService.returnBook(bookCopyId, customerId);
             System.out.println("Die Buchkopie " + bookCopyId
                     + " wurde erfolgreich vom Kunden " + customerId + " zurückgegeben.");
+            if (fine > 0.0) {
+                System.out.println(String.format(
+                        java.util.Locale.GERMAN,
+                        "Verspätungsgebühr: %.2f € (%d Tage überfällig)",
+                        fine, (int) (fine / LoanService.FINE_PER_DAY_EURO)));
+            }
         } catch (IllegalStateException | IllegalArgumentException e) {
             System.out.println(e.getMessage());
         }
