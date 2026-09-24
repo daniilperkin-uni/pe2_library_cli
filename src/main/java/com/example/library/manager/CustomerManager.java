@@ -127,7 +127,7 @@ public class CustomerManager {
      * @param resourcePath the classpath resource path
      */
     public void importCustomers(String resourcePath) {
-        InputStream input = getClass().getResourceAsStream(resourcePath);
+        InputStream input = CsvImporter.open(getClass(), resourcePath);
         if (input == null) {
             System.out.println("Datei existiert nicht: " + resourcePath);
             return;

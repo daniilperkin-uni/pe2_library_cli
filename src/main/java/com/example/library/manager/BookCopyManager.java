@@ -124,7 +124,7 @@ public class BookCopyManager {
      */
     public void importBookCopies(String resourcePath, BookManager bookManager,
                                  CustomerManager customerManager) {
-        InputStream input = getClass().getResourceAsStream(resourcePath);
+        InputStream input = CsvImporter.open(getClass(), resourcePath);
         if (input == null) {
             System.out.println("Datei existiert nicht: " + resourcePath);
             return;

@@ -105,7 +105,7 @@ public class BookManager {
      * @param resourcePath the classpath resource path (e.g. {@code "/bücher.csv"})
      */
     public void importBooks(String resourcePath) {
-        InputStream input = getClass().getResourceAsStream(resourcePath);
+        InputStream input = CsvImporter.open(getClass(), resourcePath);
         if (input == null) {
             System.out.println("Datei existiert nicht: " + resourcePath);
             return;

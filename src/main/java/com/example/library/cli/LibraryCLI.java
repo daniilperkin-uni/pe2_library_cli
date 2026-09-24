@@ -7,6 +7,11 @@ import com.example.library.manager.ReservationManager;
 import com.example.library.service.LoanService;
 import com.example.library.service.ReportService;
 
+import com.example.library.csv.CsvExporter;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
@@ -32,6 +37,7 @@ public class LibraryCLI {
     private final LoanService loanService;
     private final ReportService reportService;
     private final Scanner scanner;
+    private boolean running;
 
     /**
      * Constructs a new LibraryCLI.
@@ -73,21 +79,42 @@ public class LibraryCLI {
         ReportService reportService =
                 new ReportService(bookManager, bookCopyManager, customerManager);
         Scanner scanner = new Scanner(System.in);
+        Path dataDir = Path.of(args.length > 0 ? args[0] : "data");
 
-        bookManager.importBooks("/bücher.csv");
-        customerManager.importCustomers("/benutzer.csv");
-        bookCopyManager.importBookCopies("/buchkopien.csv", bookManager, customerManager);
+        // Load saved state from the data directory if present; otherwise the
+        // bundled classpath fixtures (CsvImporter.open falls back to them).
+        boolean saved = Files.isRegularFile(dataDir.resolve(CsvExporter.BOOKS_FILE));
+        String prefix = saved ? dataDir.toString() + java.io.File.separator : "/";
+        bookManager.importBooks(prefix + CsvExporter.BOOKS_FILE);
+        customerManager.importCustomers(prefix + CsvExporter.CUSTOMERS_FILE);
+        bookCopyManager.importBookCopies(prefix + CsvExporter.COPIES_FILE,
+                bookManager, customerManager);
 
         LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
                 customerManager, reservationManager, loanService, reportService, scanner);
         libraryCLI.start();
+        libraryCLI.save(dataDir);
+    }
+
+    /**
+     * Persists the current state as CSV files into {@code dataDir}.
+     *
+     * @param dataDir the target directory
+     */
+    public void save(Path dataDir) {
+        try {
+            CsvExporter.save(dataDir, bookManager, customerManager, bookCopyManager);
+            System.out.println("Daten wurden gespeichert in: " + dataDir.toAbsolutePath());
+        } catch (IOException e) {
+            System.out.println("Fehler beim Speichern: " + e.getMessage());
+        }
     }
 
     /**
      * Runs the main menu loop until the user chooses to exit.
      */
     public void start() {
-        boolean running = true;
+        running = true;
         while (running) {
             System.out.println("==BIBLIOTHEKVERWALTUNGSSYSTEM==");
             System.out.println("1. Bücher verwalten");
@@ -127,8 +154,7 @@ public class LibraryCLI {
                     createReport();
                     break;
                 case 9:
-                    System.out.println("Das Programm wird beendet.");
-                    running = false;
+                    stop();
                     break;
                 default:
                     System.out.println("Option ist noch nicht implementiert.");
@@ -256,7 +282,7 @@ public class LibraryCLI {
      */
     public void manageReservations() {
         int choice = -1;
-        while (choice != 4) {
+        while (choice != 4 && running) {
             System.out.println("==VORMERKUNGEN VERWALTEN==");
             System.out.println("1. Titel vormerken");
             System.out.println("2. Vormerkung stornieren");
@@ -348,7 +374,7 @@ public class LibraryCLI {
      */
     public void createReport() {
         int choice = -1;
-        while (choice != 7) {
+        while (choice != 7 && running) {
             System.out.println("==BERICHT ERSTELLEN==");
             System.out.println("1. Ausgabe aller Bücher");
             System.out.println("2. Ausgabe aller ausgeliehenen Buchkopien");
@@ -382,8 +408,8 @@ public class LibraryCLI {
                 case 7:
                     break;
                 case 8:
-                    System.out.println("Das Programm wird beendet.");
-                    System.exit(0);
+                    stop();
+                    return;
                 default:
                     System.out.println("Ungültige Eingabe.");
             }
@@ -486,6 +512,10 @@ public class LibraryCLI {
             if (prompt != null && !prompt.isEmpty()) {
                 System.out.print(prompt);
             }
+            if (!scanner.hasNextLine()) {
+                running = false;
+                return -1;
+            }
             String input = scanner.nextLine();
             try {
                 return Integer.parseInt(input.trim());
@@ -493,6 +523,12 @@ public class LibraryCLI {
                 System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
             }
         }
+    }
+
+    /** Ends the main loop; the caller then saves state and returns. */
+    private void stop() {
+        System.out.println("Das Programm wird beendet.");
+        running = false;
     }
 
     /**
@@ -506,8 +542,8 @@ public class LibraryCLI {
             case 1:
                 break;
             case 2:
-                System.out.println("Das Programm wird beendet");
-                System.exit(0);
+                stop();
+                break;
             default:
                 System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
         }

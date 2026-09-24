@@ -24,6 +24,26 @@ public final class CsvImporter {
     }
 
     /**
+     * Opens a CSV source: a filesystem path if such a file exists, otherwise a
+     * classpath resource. This lets saved state override the bundled fixtures.
+     *
+     * @param anchor       class used to resolve classpath resources
+     * @param resourcePath file path or classpath resource path
+     * @return an open stream, or {@code null} if neither exists
+     */
+    public static InputStream open(Class<?> anchor, String resourcePath) {
+        java.nio.file.Path file = java.nio.file.Path.of(resourcePath);
+        if (java.nio.file.Files.isRegularFile(file)) {
+            try {
+                return java.nio.file.Files.newInputStream(file);
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
+        return anchor.getResourceAsStream(resourcePath);
+    }
+
+    /**
      * Parses a CSV stream into a list of rows, where each row is an array of
      * field strings.
      *
