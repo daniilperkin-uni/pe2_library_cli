@@ -6,7 +6,8 @@ Guidance for AI agents (and humans) working on this repository.
 
 A small Java 21 command-line library-management application, refactored from a
 single 985-line `LibraryCLI.java` monolith into a layered
-`model / manager / service / csv / cli` package structure.
+`model / manager / service / csv / cli` package structure. It also has
+reservations, late-return fines and save-on-exit to a data dir (`./data`).
 
 ## Build commands
 
@@ -24,8 +25,8 @@ java -cp target/classes com.example.library.cli.LibraryCLI
 The Maven Wrapper (`mvnw` / `mvnw.cmd`) is committed; it downloads Maven
 3.9.9 automatically. Java 21 is required (matches `.github/workflows/ci.yml`).
 
-CI: `.github/workflows/ci.yml` runs `mvn clean install` on JDK 21 (Temurin)
-for pushes/PRs to `main` and `uebungsblatt3`.
+CI: `.github/workflows/ci.yml` runs `./mvnw -B verify` on JDK 21 (Temurin)
+for pushes/PRs to `master` (plus manual `workflow_dispatch`).
 
 ## Architecture rules
 
@@ -88,7 +89,8 @@ for pushes/PRs to `main` and `uebungsblatt3`.
 | `src/main/java/.../service/LoanService.java` | loan / return logic |
 | `src/main/java/.../service/ReportService.java` | report logic |
 | `src/main/java/.../manager/*.java` | CRUD + CSV import per entity |
-| `src/main/java/.../model/*.java` | Book, BookCopy, Customer |
+| `src/main/java/.../model/*.java` | Book, BookCopy, Customer, Reservation |
 | `src/main/java/.../csv/CsvImporter.java` | CSV parser |
+| `src/main/java/.../csv/CsvExporter.java` | save state on exit |
 | `src/main/resources/*.csv` | sanitized fixtures |
 | `src/test/java/.../*.java` | JUnit 5 + AssertJ tests |

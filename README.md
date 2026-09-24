@@ -64,7 +64,7 @@ only synthetic placeholder data (no real PII).
 To build the JAR without running tests:
 
 ```bash
-./mvnw clean package
+./mvnw clean package -DskipTests
 ```
 
 The runnable JAR is produced in `target/`.
