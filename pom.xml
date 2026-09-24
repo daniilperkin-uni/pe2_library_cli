@@ -4,14 +4,15 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
-    <artifactId>team92</artifactId>
+    <groupId>io.github.daniilperkin</groupId>
+    <artifactId>pe2-library-cli</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <name>PE2 Library CLI</name>
+    <description>Command-line library management system (books, copies, customers, loans, reservations).</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <!-- zentrale JUnit-BOM für einheitliche Versionierung -->
         <junit.version>5.12.1</junit.version>
     </properties>
@@ -36,11 +37,6 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- AssertJ für flüssige Test-Assertions -->
         <dependency>
             <groupId>org.assertj</groupId>
@@ -57,8 +53,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
@@ -66,11 +61,30 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
+                <version>3.6.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
                 <configuration>
-                    <!-- Alte JUnit 4-/Vintage-Engines ausschließen -->
-                    <excludedGroups>junit.vintage</excludedGroups>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.example.library.cli.LibraryCLI</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution><goals><goal>prepare-agent</goal></goals></execution>
+                    <execution><id>report</id><phase>verify</phase><goals><goal>report</goal></goals></execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
