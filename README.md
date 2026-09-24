@@ -1,5 +1,7 @@
 # pe2_library_cli
 
+[![CI](https://github.com/daniilperkin-uni/pe2_library_cli/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/daniilperkin-uni/pe2_library_cli/actions/workflows/ci.yml)
+
 **Author:** Daniil Perkin
 
 ---
@@ -8,6 +10,15 @@ pe2_library_cli is a command-line application for managing a small library
 system. It supports importing, listing, searching and deleting books and book
 copies, managing customers, performing loan and return operations, and
 generating various reports.
+
+Features:
+
+- CSV import of books, copies and customers (quoted-field aware, UTF-8)
+- Loans, returns and late-return fines
+- Reservations (Vormerkungen) with a per-book queue
+- Reports on the current stock and loans
+- **State is saved on exit** to a data directory (default `./data`) in the
+  same CSV format and reloaded on the next start
 
 ## Requirements
 
@@ -24,16 +35,19 @@ src/
 ├── main/
 │   ├── java/com/example/library/
 │   │   ├── cli/         # LibraryCLI — thin menu loop + Scanner I/O
-│   │   ├── csv/         # CsvImporter — quoted-field-aware UTF-8 CSV parser
-│   │   ├── manager/     # BookManager, BookCopyManager, CustomerManager
-│   │   ├── model/       # Book, BookCopy, Customer
+│   │   ├── csv/         # CsvImporter (parser), CsvExporter (save on exit)
+│   │   ├── manager/     # BookManager, BookCopyManager, CustomerManager,
+│   │   │                # ReservationManager
+│   │   ├── model/       # Book, BookCopy, Customer, Reservation
 │   │   └── service/     # LoanService, ReportService (pure business logic)
 │   └── resources/       # bücher.csv, buchkopien.csv, benutzer.csv (classpath)
 └── test/java/com/example/library/
-    ├── csv/             # CsvImporterTest
-    ├── manager/         # BookManagerTest, BookCopyManagerTest, CustomerManagerTest
+    ├── cli/             # LibraryCLITest (scripted Scanner)
+    ├── csv/             # CsvImporterTest, CsvExporterTest
+    ├── manager/         # BookManagerTest, BookCopyManagerTest,
+    │                    # CustomerManagerTest, ReservationManagerTest
     ├── model/           # BookTest, BookCopyTest, CustomerTest
-    └── service/         # LoanServiceTest, ReportServiceTest
+    └── service/         # LoanServiceTest, LoanServiceFineTest, ReportServiceTest
 ```
 
 CSV fixtures live in `src/main/resources/` and are loaded from the classpath
@@ -60,7 +74,24 @@ The runnable JAR is produced in `target/`.
 Run the application:
 
 ```bash
-java -cp target/classes com.example.library.cli.LibraryCLI
+./mvnw clean package
+java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar [data-dir]
+```
+
+`data-dir` defaults to `./data`. If it already contains saved CSV files they
+are loaded; otherwise the bundled fixtures are used. On exit the current state
+is written back there.
+
+Sample session:
+
+```
+==BIBLIOTHEKVERWALTUNGSSYSTEM==
+...
+8. Bericht erstellen
+9. Programm beenden
+Wählen Sie eine Option: 9
+Das Programm wird beendet.
+Daten wurden gespeichert in: /home/me/data
 ```
 
 A text-based menu is displayed. Select options by entering the corresponding
@@ -74,8 +105,9 @@ number and pressing Enter.
 4. Eine Buchkopie ausleihen — loan a book copy to a customer
 5. Eine Buchkopie zurückgeben — return a book copy
 6. Eine Buchkopie suchen — search book copies by ISBN, title, or author
-7. Bericht erstellen — generate reports
-8. Programm beenden — exit
+7. Vormerkungen verwalten — manage reservations
+8. Bericht erstellen — generate reports
+9. Programm beenden — save and exit
 
 ## Modules
 
@@ -86,6 +118,8 @@ number and pressing Enter.
   customers by ID.
 - **LoanService** — pure business logic for loaning and returning book copies;
   throws on invalid operations (no console I/O).
+- **ReservationManager** — per-book reservation queues.
+- **CsvExporter** — writes state back to CSV on exit.
 - **ReportService** — pure business logic that returns report lines as lists
   for the CLI to print (no console I/O).
 
