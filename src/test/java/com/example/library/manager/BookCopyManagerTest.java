@@ -4,6 +4,9 @@ import com.example.library.model.BookCopy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,5 +88,21 @@ class BookCopyManagerTest {
         bookCopyManager.searchBookCopies(scanner);
         // no exception thrown and copies remain
         assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
+
+    @Test
+    void searchBookCopies_reports_a_missing_isbn_once() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        try {
+            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
+            bookCopyManager.searchBookCopies(new Scanner("1\n0000000000\n"));
+        } finally {
+            System.setOut(originalOut);
+        }
+        String printed = out.toString(StandardCharsets.UTF_8);
+        assertThat(printed).contains("Es existiert keine Buchkopie mit dieser ISBN: 0000000000");
+        // the generic fallback must not repeat the same empty result
+        assertThat(printed).doesNotContain("Es wurden keine Buchkopien gefunden.");
     }
 }

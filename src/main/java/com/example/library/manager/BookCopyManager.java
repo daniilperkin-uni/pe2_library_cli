@@ -175,7 +175,7 @@ public class BookCopyManager {
         System.out.println("1. ISBN");
         System.out.println("2. Buchtitel");
         System.out.println("3. Autor");
-        System.out.println("4. Zurück zum Haupmenü");
+        System.out.println("4. Zurück zum Hauptmenü");
         int choice;
         try {
             choice = scanner.nextInt();
@@ -232,12 +232,8 @@ public class BookCopyManager {
             default:
                 System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
         }
-        if (!foundBookCopies.isEmpty()) {
-            for (BookCopy bookCopy : foundBookCopies) {
-                System.out.println(bookCopy.toString());
-            }
-        } else {
-            System.out.println("Es wurden keine Buchkopien gefunden.");
+        for (BookCopy bookCopy : foundBookCopies) {
+            System.out.println(bookCopy.toString());
         }
     }
 }

@@ -64,7 +64,7 @@ public class CustomerManager {
         int choice = -1;
         int id = -1;
         while (choice != 2) {
-            System.out.println("Bitte geben Sie die ID des Kundes ein (oder -1 zum Abbrechen):");
+            System.out.println("Bitte geben Sie die ID des Kunden ein (oder -1 zum Abbrechen):");
             try {
                 id = scanner.nextInt();
                 scanner.nextLine();

@@ -143,14 +143,45 @@ public class LoanService {
      * @return fine in euro, 0.0 when nothing is due
      */
     public double calculateFine(BookCopy copy, LocalDate today) {
+        return overdueDays(copy, today) * FINE_PER_DAY_EURO;
+    }
+
+    /**
+     * Number of days the copy is past its loan period.
+     *
+     * <p>The register print used to re-derive the day count from the fine
+     * ({@code (int) (fine / FINE_PER_DAY_EURO)}), which couples the message to
+     * the euro constant; this method exposes the day count directly.</p>
+     *
+     * @param copy the book copy to evaluate
+     * @param today reference date for the overdue calculation
+     * @return overdue days, 0 when the copy is not lent, has no loan date, or
+     *         is still within the loan period
+     */
+    public long overdueDays(BookCopy copy, LocalDate today) {
         if (copy == null || !copy.isLent() || copy.getLoanDate() == null) {
-            return 0.0;
+            return 0L;
         }
-        long overdueDays = today.toEpochDay() - copy.getLoanDate().plusDays(LOAN_PERIOD_DAYS).toEpochDay();
-        if (overdueDays <= 0) {
-            return 0.0;
+        long overdueDays = today.toEpochDay()
+                - copy.getLoanDate().plusDays(LOAN_PERIOD_DAYS).toEpochDay();
+        return Math.max(0L, overdueDays);
+    }
+
+    /**
+     * Convenience wrapper for the CLI: overdue days of the copy with the given
+     * id, measured against the current date.
+     *
+     * @param bookCopyId the ID of the book copy to evaluate
+     * @return overdue days, 0 when the copy is not lent or not overdue
+     * @throws IllegalArgumentException if no copy exists for the id
+     */
+    public long overdueDays(int bookCopyId) {
+        BookCopy bookCopy = bookCopyManager.getBookCopy(bookCopyId);
+        if (bookCopy == null) {
+            throw new IllegalArgumentException(
+                    "Es existiert keine Buchkopie mit dieser ID: " + bookCopyId);
         }
-        return overdueDays * FINE_PER_DAY_EURO;
+        return overdueDays(bookCopy, LocalDate.now());
     }
 
     /**

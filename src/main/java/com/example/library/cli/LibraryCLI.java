@@ -68,7 +68,8 @@ public class LibraryCLI {
      * <p>Wires up the managers and services, imports the CSV fixtures from the
      * classpath, and starts the interactive menu loop.</p>
      *
-     * @param args command-line arguments (ignored)
+     * @param args optional data directory as the first argument (defaults to
+     *             {@code ./data}); further arguments are ignored
      */
     public static void main(String[] args) {
         BookManager bookManager = new BookManager();
@@ -89,6 +90,11 @@ public class LibraryCLI {
         customerManager.importCustomers(prefix + CsvExporter.CUSTOMERS_FILE);
         bookCopyManager.importBookCopies(prefix + CsvExporter.COPIES_FILE,
                 bookManager, customerManager);
+        // Reservations have no bundled fixture and only exist once a previous
+        // run has saved them, so they are only imported when the file is there.
+        if (Files.isRegularFile(dataDir.resolve(CsvExporter.RESERVATIONS_FILE))) {
+            reservationManager.importReservations(prefix + CsvExporter.RESERVATIONS_FILE);
+        }
 
         LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
                 customerManager, reservationManager, loanService, reportService, scanner);
@@ -103,7 +109,8 @@ public class LibraryCLI {
      */
     public void save(Path dataDir) {
         try {
-            CsvExporter.save(dataDir, bookManager, customerManager, bookCopyManager);
+            CsvExporter.save(dataDir, bookManager, customerManager, bookCopyManager,
+                    reservationManager);
             System.out.println("Daten wurden gespeichert in: " + dataDir.toAbsolutePath());
         } catch (IOException e) {
             System.out.println("Fehler beim Speichern: " + e.getMessage());
@@ -157,7 +164,7 @@ public class LibraryCLI {
                     stop();
                     break;
                 default:
-                    System.out.println("Option ist noch nicht implementiert.");
+                    System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
             }
         }
     }
@@ -177,7 +184,7 @@ public class LibraryCLI {
             case 2:
                 break;
             default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+                System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
     }
 
@@ -196,7 +203,7 @@ public class LibraryCLI {
             case 2:
                 break;
             default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+                System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
     }
 
@@ -215,7 +222,7 @@ public class LibraryCLI {
             case 2:
                 break;
             default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+                System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
     }
 
@@ -261,6 +268,7 @@ public class LibraryCLI {
         }
         try {
             double fine = loanService.calculateFine(bookCopyId);
+            long overdueDays = loanService.overdueDays(bookCopyId);
             loanService.returnBook(bookCopyId, customerId);
             System.out.println("Die Buchkopie " + bookCopyId
                     + " wurde erfolgreich vom Kunden " + customerId + " zurückgegeben.");
@@ -268,7 +276,7 @@ public class LibraryCLI {
                 System.out.println(String.format(
                         java.util.Locale.GERMAN,
                         "Verspätungsgebühr: %.2f € (%d Tage überfällig)",
-                        fine, (int) (fine / LoanService.FINE_PER_DAY_EURO)));
+                        fine, overdueDays));
             }
         } catch (IllegalStateException | IllegalArgumentException e) {
             System.out.println(e.getMessage());
@@ -303,7 +311,7 @@ public class LibraryCLI {
                 case 4:
                     break;
                 default:
-                    System.out.println("Option ist noch nicht implementiert.");
+                    System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
             }
         }
     }
@@ -311,6 +319,11 @@ public class LibraryCLI {
     /**
      * Places a reservation for a customer on a title that currently has no
      * available copy.
+     *
+     * <p>The waiting customer must exist; unknown customer id is rejected
+     * before anything is enqueued. (The book side of the queue is keyed by the
+     * caller's numeric title id, which books - being ISBN keyed - do not have,
+     * so it is not checked against the book map.)</p>
      */
     public void reserveTitle() {
         int bookId = readInt("Buch-ID des gewünschten Titels: ");
@@ -322,6 +335,10 @@ public class LibraryCLI {
             return;
         }
         try {
+            if (!customerManager.exists(customerId)) {
+                throw new IllegalArgumentException(
+                        "Es existiert kein Kunde mit dieser ID: " + customerId);
+            }
             var reservation = reservationManager.reserve(bookId, customerId);
             System.out.println("Vormerkung " + reservation.id() + " für Buch "
                     + bookId + " von Kunde " + customerId + " angelegt.");
@@ -545,7 +562,7 @@ public class LibraryCLI {
                 stop();
                 break;
             default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+                System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
     }
 }

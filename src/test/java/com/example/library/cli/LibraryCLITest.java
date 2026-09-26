@@ -74,4 +74,17 @@ class LibraryCLITest {
         String output = run("abc\n");
         assertThat(output).contains("Ungültige Eingabe!");
     }
+
+    @Test
+    void reservationForUnknownCustomerIsRejected() {
+        String output = run("7\n1\n5\n999\n2\n");
+        assertThat(output).contains("Es existiert kein Kunde mit dieser ID: 999");
+        assertThat(output).doesNotContain("angelegt.");
+    }
+
+    @Test
+    void reservationForExistingCustomerIsEnqueued() {
+        String output = run("7\n1\n5\n2\n2\n");
+        assertThat(output).contains("Vormerkung 1 für Buch 5 von Kunde 2 angelegt.");
+    }
 }

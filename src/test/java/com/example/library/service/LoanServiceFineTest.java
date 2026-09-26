@@ -82,4 +82,14 @@ class LoanServiceFineTest {
     void unknownCopyThrows() {
         assertThrows(IllegalArgumentException.class, () -> loanService.calculateFine(9999));
     }
+
+    @Test
+    @DisplayName("Overdue days are reported directly and agree with the fine")
+    void overdueDaysAgreeWithFine() {
+        BookCopy copy = lentCopy(7L, LocalDate.now().minusDays(LoanService.LOAN_PERIOD_DAYS + 10));
+        assertEquals(10L, loanService.overdueDays(copy, LocalDate.now()));
+        assertEquals(loanService.overdueDays(copy, LocalDate.now()) * LoanService.FINE_PER_DAY_EURO,
+                loanService.calculateFine(copy, LocalDate.now()), 1e-9);
+        assertThrows(IllegalArgumentException.class, () -> loanService.overdueDays(9999));
+    }
 }

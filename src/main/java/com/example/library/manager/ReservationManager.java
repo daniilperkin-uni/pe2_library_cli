@@ -1,7 +1,11 @@
 package com.example.library.manager;
 
+import com.example.library.csv.CsvImporter;
 import com.example.library.model.Reservation;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -89,5 +93,40 @@ public class ReservationManager {
      */
     public long queueSize(int bookId) {
         return queueFor(bookId).size();
+    }
+
+    /**
+     * Restores the queue from a CSV source: either a filesystem path or a
+     * classpath resource (see {@link CsvImporter#open}).
+     *
+     * <p>Columns: {@code id, bookId, customerId, createdAt} (yyyy-MM-dd).
+     * Restored ids are kept verbatim and {@code nextId} is advanced past the
+     * largest one, so reservations created afterwards never collide with a
+     * restored entry.</p>
+     *
+     * @param resourcePath the file path or classpath resource path
+     * @throws RuntimeException if the CSV cannot be read or parsed
+     */
+    public void importReservations(String resourcePath) {
+        InputStream input = CsvImporter.open(getClass(), resourcePath);
+        if (input == null) {
+            System.out.println("Datei existiert nicht: " + resourcePath);
+            return;
+        }
+        try {
+            List<String[]> rows = CsvImporter.parse(input, true);
+            for (String[] parts : rows) {
+                long id = Long.parseLong(parts[0].trim());
+                int bookId = Integer.parseInt(parts[1].trim());
+                int customerId = Integer.parseInt(parts[2].trim());
+                LocalDate createdAt = LocalDate.parse(parts[3].trim());
+                reservations.add(new Reservation(id, bookId, customerId, createdAt));
+                nextId = Math.max(nextId, id + 1);
+            }
+            System.out.println("Vormerkungen wurden erfolgreich importiert.");
+        } catch (IOException e) {
+            System.out.println("Fehler beim Importieren von Vormerkungen.");
+            throw new RuntimeException(e);
+        }
     }
 }

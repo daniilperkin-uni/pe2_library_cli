@@ -3,9 +3,11 @@ package com.example.library.csv;
 import com.example.library.manager.BookCopyManager;
 import com.example.library.manager.BookManager;
 import com.example.library.manager.CustomerManager;
+import com.example.library.manager.ReservationManager;
 import com.example.library.model.Book;
 import com.example.library.model.BookCopy;
 import com.example.library.model.Customer;
+import com.example.library.model.Reservation;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,21 +27,24 @@ public final class CsvExporter {
     public static final String BOOKS_FILE = "bücher.csv";
     public static final String CUSTOMERS_FILE = "benutzer.csv";
     public static final String COPIES_FILE = "buchkopien.csv";
+    public static final String RESERVATIONS_FILE = "reservations.csv";
 
     private CsvExporter() {
     }
 
     /**
-     * Saves books, customers and book copies into {@code dir}.
+     * Saves books, customers, book copies and reservations into {@code dir}.
      *
      * @param dir target directory (created if missing)
      * @param books the book manager
      * @param customers the customer manager
      * @param copies the book-copy manager
+     * @param reservations the reservation manager
      * @throws IOException if writing fails
      */
     public static void save(Path dir, BookManager books, CustomerManager customers,
-                            BookCopyManager copies) throws IOException {
+                            BookCopyManager copies, ReservationManager reservations)
+            throws IOException {
         Files.createDirectories(dir);
         List<String> lines = new ArrayList<>();
         lines.add("isbn,title,authors,year,city,publisher,edition");
@@ -71,6 +76,15 @@ public final class CsvExporter {
                         bc.isLent() && bc.getLoanDate() != null ? bc.getLoanDate().toString() : "",
                         bc.isLent() ? String.valueOf(bc.getCustomerID()) : "")));
         write(dir.resolve(COPIES_FILE), lines);
+
+        lines.clear();
+        lines.add("id,bookId,customerId,createdAt");
+        reservations.all().stream()
+                .sorted(Comparator.comparingLong(Reservation::id))
+                .forEach(r -> lines.add(String.join(",", String.valueOf(r.id()),
+                        String.valueOf(r.bookId()), String.valueOf(r.customerId()),
+                        r.createdAt().toString())));
+        write(dir.resolve(RESERVATIONS_FILE), lines);
     }
 
     private static void write(Path file, List<String> lines) throws IOException {
