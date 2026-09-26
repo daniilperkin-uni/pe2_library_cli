@@ -7,7 +7,8 @@ Guidance for AI agents (and humans) working on this repository.
 A small Java 21 command-line library-management application, refactored from a
 single 985-line `LibraryCLI.java` monolith into a layered
 `model / manager / service / csv / cli` package structure. It also has
-reservations, late-return fines and save-on-exit to a data dir (`./data`).
+reservations, late-return fines and save-on-exit to a data dir (`./data`,
+including the reservation queue in `reservations.csv`).
 
 ## Build commands
 
@@ -93,4 +94,5 @@ for pushes/PRs to `master` (plus manual `workflow_dispatch`).
 | `src/main/java/.../csv/CsvImporter.java` | CSV parser |
 | `src/main/java/.../csv/CsvExporter.java` | save state on exit |
 | `src/main/resources/*.csv` | sanitized fixtures |
+| `data/{bücher,benutzer,buchkopien,reservations}.csv` | state written on exit and reloaded on the next start |
 | `src/test/java/.../*.java` | JUnit 5 + AssertJ tests |
