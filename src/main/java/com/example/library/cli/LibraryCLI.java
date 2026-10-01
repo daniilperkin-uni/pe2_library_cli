@@ -82,8 +82,41 @@ public class LibraryCLI {
         Scanner scanner = new Scanner(System.in);
         Path dataDir = Path.of(args.length > 0 ? args[0] : "data");
 
-        // Load saved state from the data directory if present; otherwise the
-        // bundled classpath fixtures (CsvImporter.open falls back to them).
+        try {
+            loadState(dataDir, bookManager, customerManager, bookCopyManager,
+                    reservationManager);
+        } catch (RuntimeException e) {
+            // Refuse to start on unreadable or inconsistent saved data instead
+            // of crashing with a stack trace. No user action has happened yet,
+            // so there is nothing to save on this exit path.
+            System.out.println("Fehler beim Laden der Daten: " + e.getMessage());
+            System.out.println("Bitte das Datenverzeichnis prüfen oder entfernen: "
+                    + dataDir.toAbsolutePath());
+            System.exit(1);
+        }
+
+        LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
+                customerManager, reservationManager, loanService, reportService, scanner);
+        libraryCLI.start();
+        libraryCLI.save(dataDir);
+    }
+
+    /**
+     * Loads the library state from {@code dataDir} when a saved books file is
+     * present, otherwise from the bundled classpath fixtures
+     * ({@code CsvImporter.open} falls back to them).
+     *
+     * @param dataDir            the data directory (may be missing or empty)
+     * @param bookManager        the book manager to populate
+     * @param customerManager    the customer manager to populate
+     * @param bookCopyManager    the book-copy manager to populate
+     * @param reservationManager the reservation manager to populate
+     * @throws RuntimeException when saved data exists but cannot be parsed,
+     *                          e.g. a copy referencing a removed customer
+     */
+    static void loadState(Path dataDir, BookManager bookManager,
+                          CustomerManager customerManager, BookCopyManager bookCopyManager,
+                          ReservationManager reservationManager) {
         boolean saved = Files.isRegularFile(dataDir.resolve(CsvExporter.BOOKS_FILE));
         String prefix = saved ? dataDir.toString() + java.io.File.separator : "/";
         bookManager.importBooks(prefix + CsvExporter.BOOKS_FILE);
@@ -95,11 +128,6 @@ public class LibraryCLI {
         if (Files.isRegularFile(dataDir.resolve(CsvExporter.RESERVATIONS_FILE))) {
             reservationManager.importReservations(prefix + CsvExporter.RESERVATIONS_FILE);
         }
-
-        LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
-                customerManager, reservationManager, loanService, reportService, scanner);
-        libraryCLI.start();
-        libraryCLI.save(dataDir);
     }
 
     /**
@@ -362,7 +390,7 @@ public class LibraryCLI {
         } else {
             System.out.println("Keine Vormerkung mit dieser ID: " + reservationId);
         }
-        promptReturnToMain();
+        promptReturnTo("Zurück zu den Vormerkungen");
     }
 
     /**
@@ -552,7 +580,18 @@ public class LibraryCLI {
      * Offers the user a choice between returning to the main menu or exiting.
      */
     private void promptReturnToMain() {
-        System.out.println("1. Zurück zum Hauptmenü");
+        promptReturnTo("Zurück zum Hauptmenü");
+    }
+
+    /**
+     * Offers the user a choice between returning to the caller's menu and
+     * exiting the program.
+     *
+     * @param returnLabel label of the menu the user returns to, e.g.
+     *                    {@code "Zurück zu den Vormerkungen"}
+     */
+    private void promptReturnTo(String returnLabel) {
+        System.out.println("1. " + returnLabel);
         System.out.println("2. Das Programm beenden");
         int choice = readInt("");
         switch (choice) {
@@ -562,7 +601,7 @@ public class LibraryCLI {
                 stop();
                 break;
             default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
+                System.out.println("Ungültige Option.");
         }
     }
 }
