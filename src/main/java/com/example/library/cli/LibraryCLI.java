@@ -348,14 +348,12 @@ public class LibraryCLI {
      * Places a reservation for a customer on a title that currently has no
      * available copy.
      *
-     * <p>The waiting customer must exist; unknown customer id is rejected
-     * before anything is enqueued. (The book side of the queue is keyed by the
-     * caller's numeric title id, which books - being ISBN keyed - do not have,
-     * so it is not checked against the book map.)</p>
+     * <p>Both the book (by ISBN) and the waiting customer must exist; unknown
+     * values are rejected before anything is enqueued.</p>
      */
     public void reserveTitle() {
-        int bookId = readInt("Buch-ID des gewünschten Titels: ");
-        if (bookId == -1) {
+        String isbn = readIsbnOrCancel("ISBN des gewünschten Titels: ");
+        if (isbn == null) {
             return;
         }
         int customerId = readInt("Kunden-ID des Wartenden: ");
@@ -363,17 +361,21 @@ public class LibraryCLI {
             return;
         }
         try {
+            if (!bookManager.exists(isbn)) {
+                throw new IllegalArgumentException(
+                        "Es existiert kein Buch mit dieser ISBN: " + isbn);
+            }
             if (!customerManager.exists(customerId)) {
                 throw new IllegalArgumentException(
                         "Es existiert kein Kunde mit dieser ID: " + customerId);
             }
-            var reservation = reservationManager.reserve(bookId, customerId);
-            System.out.println("Vormerkung " + reservation.id() + " für Buch "
-                    + bookId + " von Kunde " + customerId + " angelegt.");
+            var reservation = reservationManager.reserve(isbn, customerId);
+            System.out.println("Vormerkung " + reservation.id() + " für ISBN "
+                    + isbn + " von Kunde " + customerId + " angelegt.");
         } catch (IllegalArgumentException e) {
             System.out.println(e.getMessage());
         }
-        promptReturnToMain();
+        promptReturnTo("Zurück zu den Vormerkungen");
     }
 
     /**
@@ -397,21 +399,21 @@ public class LibraryCLI {
      * Prints the FIFO queue for one title, earliest reservation first.
      */
     public void showReservationQueue() {
-        int bookId = readInt("Buch-ID für die Warteschlange: ");
-        if (bookId == -1) {
+        String isbn = readIsbnOrCancel("ISBN für die Warteschlange: ");
+        if (isbn == null) {
             return;
         }
-        var queue = reservationManager.queueFor(bookId);
+        var queue = reservationManager.queueFor(isbn);
         if (queue.isEmpty()) {
-            System.out.println("Keine Vormerkungen für Buch " + bookId);
+            System.out.println("Keine Vormerkungen für ISBN " + isbn);
         } else {
-            System.out.println("Warteschlange für Buch " + bookId + ":");
+            System.out.println("Warteschlange für ISBN " + isbn + ":");
             for (var r : queue) {
                 System.out.println("  Vormerkung " + r.id() + " – Kunde "
                         + r.customerId() + " (seit " + r.createdAt() + ")");
             }
         }
-        promptReturnToMain();
+        promptReturnTo("Zurück zu den Vormerkungen");
     }
 
     /**
@@ -495,6 +497,31 @@ public class LibraryCLI {
         }
         for (String line : lines) {
             System.out.println(line);
+        }
+    }
+
+    /**
+     * Reads a non-empty text value, re-prompting on empty input and treating
+     * {@code -1} or the end of the input as a cancel.
+     *
+     * @param prompt the prompt printed before reading
+     * @return the trimmed input, or {@code null} to cancel
+     */
+    private String readIsbnOrCancel(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            if (!scanner.hasNextLine()) {
+                running = false;
+                return null;
+            }
+            String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                System.out.println("Ungültige Eingabe! Bitte geben Sie eine ISBN ein.");
+            } else if ("-1".equals(input)) {
+                return null;
+            } else {
+                return input;
+            }
         }
     }
 

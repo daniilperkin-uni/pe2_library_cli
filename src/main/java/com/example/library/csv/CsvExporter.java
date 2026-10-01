@@ -78,11 +78,11 @@ public final class CsvExporter {
         write(dir.resolve(COPIES_FILE), lines);
 
         lines.clear();
-        lines.add("id,bookId,customerId,createdAt");
+        lines.add("id,bookIsbn,customerId,createdAt");
         reservations.all().stream()
                 .sorted(Comparator.comparingLong(Reservation::id))
                 .forEach(r -> lines.add(String.join(",", String.valueOf(r.id()),
-                        String.valueOf(r.bookId()), String.valueOf(r.customerId()),
+                        q(r.bookIsbn()), String.valueOf(r.customerId()),
                         r.createdAt().toString())));
         write(dir.resolve(RESERVATIONS_FILE), lines);
     }

@@ -57,8 +57,8 @@ class CsvExporterTest {
         customers.importCustomers("/benutzer.csv");
         copies.importBookCopies("/buchkopien.csv", books, customers);
         ReservationManager reservations = new ReservationManager();
-        Reservation first = reservations.reserve(7, 2);
-        Reservation second = reservations.reserve(7, 3);
+        Reservation first = reservations.reserve("isbn-7", 2);
+        Reservation second = reservations.reserve("isbn-7", 3);
 
         CsvExporter.save(dir, books, customers, copies, reservations);
 
@@ -67,7 +67,7 @@ class CsvExporterTest {
 
         assertThat(restored.all()).containsExactly(first, second);
         // restored ids must not be handed out again for a new reservation
-        assertThat(restored.reserve(7, 4).id()).isEqualTo(3);
+        assertThat(restored.reserve("isbn-7", 4).id()).isEqualTo(3);
     }
 
     @Test

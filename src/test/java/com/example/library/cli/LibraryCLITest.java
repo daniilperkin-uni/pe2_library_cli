@@ -77,14 +77,21 @@ class LibraryCLITest {
 
     @Test
     void reservationForUnknownCustomerIsRejected() {
-        String output = run("7\n1\n5\n999\n2\n");
+        String output = run("7\n1\n3036959548\n999\n2\n");
         assertThat(output).contains("Es existiert kein Kunde mit dieser ID: 999");
         assertThat(output).doesNotContain("angelegt.");
     }
 
     @Test
+    void reservationForUnknownBookIsRejected() {
+        String output = run("7\n1\n0000000000\n2\n");
+        assertThat(output).contains("Es existiert kein Buch mit dieser ISBN: 0000000000");
+        assertThat(output).doesNotContain("angelegt.");
+    }
+
+    @Test
     void reservationForExistingCustomerIsEnqueued() {
-        String output = run("7\n1\n5\n2\n2\n");
-        assertThat(output).contains("Vormerkung 1 für Buch 5 von Kunde 2 angelegt.");
+        String output = run("7\n1\n3036959548\n2\n2\n");
+        assertThat(output).contains("Vormerkung 1 für ISBN 3036959548 von Kunde 2 angelegt.");
     }
 }
