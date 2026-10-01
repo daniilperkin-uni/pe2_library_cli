@@ -55,11 +55,13 @@ public class BookManager {
      * Interactively deletes a book by ISBN.
      *
      * <p>The user is prompted for an ISBN and asked to confirm deletion.
-     * Entering {@code -1} cancels the operation.</p>
+     * Entering {@code -1} cancels the operation. A book that still has book
+     * copies cannot be deleted.</p>
      *
-     * @param scanner the scanner used for user input
+     * @param scanner         the scanner used for user input
+     * @param bookCopyManager the manager used to check for remaining copies
      */
-    public void deleteBook(Scanner scanner) {
+    public void deleteBook(Scanner scanner, BookCopyManager bookCopyManager) {
         System.out.println("==EIN BUCH LÖSCHEN==");
         int choice = -1;
         String isbn;
@@ -71,6 +73,18 @@ public class BookManager {
             }
             if (!books.containsKey(isbn)) {
                 System.out.println("Es existiert kein Buch mit dieser ID: " + isbn);
+                continue;
+            }
+            boolean referencedByCopies = false;
+            for (var copy : bookCopyManager.getBookCopies().values()) {
+                if (copy.getBook() != null && isbn.equals(copy.getBook().getIsbn())) {
+                    referencedByCopies = true;
+                    break;
+                }
+            }
+            if (referencedByCopies) {
+                System.out.println("Das Buch mit ISBN: " + isbn
+                        + " hat noch Buchkopien und kann nicht gelöscht werden.");
                 continue;
             }
             System.out.println("Das Buch mit ISBN: " + isbn + " wird gelöscht.");
@@ -92,6 +106,8 @@ public class BookManager {
                     break;
                 case 2:
                     break;
+                default:
+                    System.out.println("Ungültige Option. Bitte erneut wählen.");
             }
         }
     }

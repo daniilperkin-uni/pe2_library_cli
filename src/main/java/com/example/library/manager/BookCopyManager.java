@@ -60,7 +60,8 @@ public class BookCopyManager {
      * Interactively deletes a book copy by ID.
      *
      * <p>The user is prompted for a copy ID and asked to confirm deletion.
-     * Entering {@code -1} cancels the operation.</p>
+     * Entering {@code -1} cancels the operation. A lent copy cannot be
+     * deleted.</p>
      *
      * @param scanner the scanner used for user input
      */
@@ -85,6 +86,11 @@ public class BookCopyManager {
                 System.out.println("Es existiert keine Buchkopie mit dieser ID: " + id);
                 continue;
             }
+            if (bookCopies.get(id).isLent()) {
+                System.out.println("Die Buchkopie mit ID: " + id
+                        + " ist verliehen und kann nicht gelöscht werden.");
+                continue;
+            }
 
             System.out.println("Die Buchkopie mit ID: " + id + " wird gelöscht.");
             System.out.println("1. Bestätigen");
@@ -106,6 +112,8 @@ public class BookCopyManager {
                     break;
                 case 2:
                     break;
+                default:
+                    System.out.println("Ungültige Option. Bitte erneut wählen.");
             }
         }
     }

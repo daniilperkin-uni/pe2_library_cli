@@ -179,7 +179,7 @@ public class LibraryCLI {
         int choice = readInt("");
         switch (choice) {
             case 1:
-                bookManager.deleteBook(scanner);
+                bookManager.deleteBook(scanner, bookCopyManager);
                 break;
             case 2:
                 break;

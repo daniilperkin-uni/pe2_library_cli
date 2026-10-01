@@ -55,7 +55,8 @@ public class CustomerManager {
      *
      * <p>The user is prompted for a customer ID, asked to confirm deletion,
      * and then asked to confirm again with {@code j}/{@code n}/{@code x}.
-     * Entering {@code -1} at the ID prompt cancels the operation.</p>
+     * Entering {@code -1} at the ID prompt cancels the operation. Customers
+     * with outstanding loans cannot be deleted.</p>
      *
      * @param scanner the scanner used for user input
      */
@@ -78,6 +79,11 @@ public class CustomerManager {
             }
             if (!customers.containsKey(id)) {
                 System.out.println("Es existiert kein Kunde mit dieser ID: " + id);
+                continue;
+            }
+            if (!customers.get(id).getBookCopies().isEmpty()) {
+                System.out.println("Der Kunde mit ID: " + id
+                        + " hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
                 continue;
             }
 

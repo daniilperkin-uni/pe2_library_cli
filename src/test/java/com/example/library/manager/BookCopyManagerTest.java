@@ -73,6 +73,23 @@ class BookCopyManagerTest {
     }
 
     @Test
+    void deleteBookCopy_refuses_when_copy_is_lent() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        try {
+            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
+            bookCopyManager.deleteBookCopy(new Scanner("2\n-1\n"));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertThat(out.toString(StandardCharsets.UTF_8))
+                .contains("ist verliehen und kann nicht gelöscht werden.");
+        assertThat(bookCopyManager.exists(2)).isTrue();
+        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
+
+    @Test
     void searchBookCopies_by_isbn_finds_matching_copies() {
         Scanner scanner = new Scanner("1\n3036959548\n");
         bookCopyManager.searchBookCopies(scanner);

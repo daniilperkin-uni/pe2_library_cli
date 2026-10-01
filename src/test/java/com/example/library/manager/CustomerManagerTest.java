@@ -1,9 +1,15 @@
 package com.example.library.manager;
 
+import com.example.library.model.BookCopy;
 import com.example.library.model.Customer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +62,26 @@ class CustomerManagerTest {
     void deleteCustomer_cancels_with_minus_one() {
         Scanner scanner = new Scanner("-1\n");
         customerManager.deleteCustomer(scanner);
+        assertThat(customerManager.getCustomers()).hasSize(2);
+    }
+
+    @Test
+    void deleteCustomer_refuses_when_customer_has_open_loans() {
+        customerManager.getCustomer(2).addBookCopy(
+                new BookCopy(99, null, "A1", new Date(), true, LocalDate.now(), 2));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        try {
+            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
+            customerManager.deleteCustomer(new Scanner("2\n-1\n"));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertThat(out.toString(StandardCharsets.UTF_8))
+                .contains("hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
+        assertThat(customerManager.exists(2)).isTrue();
         assertThat(customerManager.getCustomers()).hasSize(2);
     }
 }
