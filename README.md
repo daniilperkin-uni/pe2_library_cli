@@ -15,7 +15,7 @@ Features:
 
 - CSV import of books, copies and customers (quoted-field aware, UTF-8)
 - Loans, returns and late-return fines
-- Reservations (Vormerkungen) with a per-book queue
+- Reservations (Vormerkungen) with a per-title (ISBN) queue
 - Reports on the current stock and loans
 - **State is saved on exit** to a data directory (default `./data`) in the
   same CSV format and reloaded on the next start — books, customers, book
@@ -82,7 +82,10 @@ java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar [data-dir]
 `data-dir` defaults to `./data`. If it already contains saved CSV files they
 are loaded; otherwise the bundled fixtures are used. On exit the current state
 is written back there as `bücher.csv`, `benutzer.csv`, `buchkopien.csv` and
-`reservations.csv`.
+`reservations.csv`. Deletion is guarded: a customer with open loans, a lent
+book copy and a book that still has copies cannot be deleted, and the app
+refuses to start on saved data that cannot be loaded (clear message, exit
+code 1) instead of crashing.
 
 Sample session:
 
@@ -120,8 +123,8 @@ number and pressing Enter.
   customers by ID.
 - **LoanService** — pure business logic for loaning and returning book copies;
   throws on invalid operations (no console I/O).
-- **ReservationManager** — per-book reservation queues; `importReservations`
-  restores the queue saved on the previous run.
+- **ReservationManager** — per-title (ISBN-keyed) reservation queues;
+  `importReservations` restores the queue saved on the previous run.
 - **CsvExporter** — writes state back to CSV on exit.
 - **ReportService** — pure business logic that returns report lines as lists
   for the CLI to print (no console I/O).

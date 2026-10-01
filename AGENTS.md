@@ -27,13 +27,17 @@ The Maven Wrapper (`mvnw` / `mvnw.cmd`) is committed; it downloads Maven
 3.9.9 automatically. Java 21 is required (matches `.github/workflows/ci.yml`).
 
 CI: `.github/workflows/ci.yml` runs `./mvnw -B verify` on JDK 21 (Temurin)
-for pushes/PRs to `master` (plus manual `workflow_dispatch`).
+for pushes/PRs to `master` (plus `merge_group` and manual
+`workflow_dispatch`).
 
 ## Architecture rules
 
 1. **Layering.** `cli` → `service` → `manager` → `model`. The CLI layer owns
    all `Scanner` / `System.out` I/O. Service classes contain **only** pure
    business logic — no `System.out`, no `Scanner`, no `System.exit`.
+   (Known open item: the interactive delete/search flows in `BookManager` /
+   `BookCopyManager` / `CustomerManager` still own their `Scanner` I/O; the
+   rule above is the target for all new code.)
 2. **Errors as exceptions.** Services throw (`IllegalArgumentException` for
    missing entities, `IllegalStateException` for invalid state) instead of
    printing and returning silently. The CLI catches and prints them.
@@ -48,6 +52,8 @@ for pushes/PRs to `master` (plus manual `workflow_dispatch`).
    data.
 
 ## Known-fixed bugs (do not regress)
+
+*(Numbering follows the original audit; the list is not contiguous.)*
 
 - **BUG 1 — loanBook guard order.** `isLent()` must be checked **before**
   `setLent(true)`. The original mutated first, so the guard never fired.
@@ -70,6 +76,12 @@ for pushes/PRs to `master` (plus manual `workflow_dispatch`).
 - **BUG 7 — uncaught InputMismatchException.** All submenus now read through
   the CLI's `readInt` helper, which catches non-numeric input and re-prompts
   instead of crashing.
+- **Deletion guards.** A customer with outstanding loans, a lent book copy,
+  and a book that is still referenced by book copies must not be deletable
+  from the menus — otherwise the saved state no longer reloads.
+- **Startup load guard.** `LibraryCLI.main` aborts with a clear message and
+  exit code 1 when the saved data cannot be loaded, instead of crashing with
+  a stack trace.
 
 ## Test conventions
 
