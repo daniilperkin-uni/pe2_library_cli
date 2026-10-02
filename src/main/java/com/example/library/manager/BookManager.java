@@ -16,7 +16,7 @@ import java.util.InputMismatchException;
 /**
  * Manages the collection of {@link Book} objects in the library.
  *
- * <p>Provides lookup, deletion and CSV import functionality.</p>
+ * <p>Provides lookup, creation, deletion and CSV import functionality.</p>
  */
 public class BookManager {
 
@@ -110,6 +110,48 @@ public class BookManager {
                     System.out.println("Ungültige Option. Bitte erneut wählen.");
             }
         }
+    }
+
+    /**
+     * Creates a new book and adds it to the collection.
+     *
+     * <p>Pure validation and storage — the interactive prompting lives in the
+     * CLI layer. Invalid input is rejected with a German
+     * {@link IllegalArgumentException}.</p>
+     *
+     * @param isbn      the ISBN (must not be blank or already present)
+     * @param title     the title (must not be blank)
+     * @param authors   the authors (at least one entry)
+     * @param year      the publication year (must be positive)
+     * @param city      the city of publication
+     * @param publisher the publisher name
+     * @param edition   the edition number
+     * @return the created {@link Book}
+     * @throws IllegalArgumentException if the ISBN is blank or already known,
+     *                                  or title/authors/year are invalid
+     */
+    public Book addBook(String isbn, String title, List<String> authors, int year,
+                        String city, String publisher, int edition) {
+        String cleanIsbn = isbn == null ? "" : isbn.trim();
+        if (cleanIsbn.isEmpty()) {
+            throw new IllegalArgumentException("Die ISBN darf nicht leer sein.");
+        }
+        if (books.containsKey(cleanIsbn)) {
+            throw new IllegalArgumentException(
+                    "Es existiert bereits ein Buch mit dieser ISBN: " + cleanIsbn);
+        }
+        if (title == null || title.trim().isEmpty()) {
+            throw new IllegalArgumentException("Der Titel darf nicht leer sein.");
+        }
+        if (authors == null || authors.isEmpty()) {
+            throw new IllegalArgumentException("Es muss mindestens ein Autor angegeben werden.");
+        }
+        if (year <= 0) {
+            throw new IllegalArgumentException("Das Erscheinungsjahr muss größer als 0 sein.");
+        }
+        Book book = new Book(cleanIsbn, title.trim(), authors, year, city, publisher, edition);
+        books.put(cleanIsbn, book);
+        return book;
     }
 
     /**

@@ -7,9 +7,11 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BookManagerTest {
 
@@ -95,5 +97,39 @@ class BookManagerTest {
                 .contains("hat noch Buchkopien und kann nicht gelöscht werden.");
         assertThat(bookManager.exists("3036959548")).isTrue();
         assertThat(bookManager.getBooks()).hasSize(3);
+    }
+
+    @Test
+    void addBook_stores_all_fields() {
+        Book book = bookManager.addBook("9783442267744", "Die Verwandlung",
+                List.of("Franz Kafka"), 2003, "München", "dtv", 2);
+        assertThat(book.getIsbn()).isEqualTo("9783442267744");
+        assertThat(bookManager.getBook("9783442267744")).isSameAs(book);
+        assertThat(book.getTitle()).isEqualTo("Die Verwandlung");
+        assertThat(book.getAuthors()).containsExactly("Franz Kafka");
+        assertThat(book.getYear()).isEqualTo(2003);
+        assertThat(book.getEdition()).isEqualTo(2);
+        assertThat(bookManager.getBooks()).hasSize(4);
+    }
+
+    @Test
+    void addBook_rejects_duplicate_isbn() {
+        assertThatThrownBy(() -> bookManager.addBook("3551551677", "Doppelt",
+                List.of("Autor"), 2000, "Ort", "Verlag", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Es existiert bereits ein Buch mit dieser ISBN: 3551551677");
+        assertThat(bookManager.getBooks()).hasSize(3);
+    }
+
+    @Test
+    void addBook_rejects_blank_isbn_and_title() {
+        assertThatThrownBy(() -> bookManager.addBook("  ", "Titel",
+                List.of("Autor"), 2000, "Ort", "Verlag", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ISBN darf nicht leer");
+        assertThatThrownBy(() -> bookManager.addBook("999", "  ",
+                List.of("Autor"), 2000, "Ort", "Verlag", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Titel darf nicht leer");
     }
 }

@@ -21,7 +21,7 @@ import java.util.InputMismatchException;
 /**
  * Manages the collection of {@link BookCopy} objects in the library.
  *
- * <p>Provides lookup, deletion, search and CSV import functionality.</p>
+ * <p>Provides lookup, creation, deletion, search and CSV import functionality.</p>
  */
 public class BookCopyManager {
 
@@ -116,6 +116,37 @@ public class BookCopyManager {
                     System.out.println("Ungültige Option. Bitte erneut wählen.");
             }
         }
+    }
+
+    /**
+     * Creates a new copy for an existing book. The copy ID is assigned
+     * automatically as the next free number; new copies start out available
+     * (not lent) and with today's date as the date they were added.
+     *
+     * <p>Pure validation and storage — the interactive prompting lives in the
+     * CLI layer.</p>
+     *
+     * @param isbn          the ISBN of the book the copy belongs to
+     * @param shelfLocation the shelf location (must not be blank)
+     * @param bookManager   the book manager used to resolve the ISBN
+     * @return the created {@link BookCopy}
+     * @throws IllegalArgumentException if no book exists for the ISBN or the
+     *                                  shelf location is blank
+     */
+    public BookCopy addBookCopy(String isbn, String shelfLocation, BookManager bookManager) {
+        String cleanIsbn = isbn == null ? "" : isbn.trim();
+        if (!bookManager.exists(cleanIsbn)) {
+            throw new IllegalArgumentException(
+                    "Es existiert kein Buch mit dieser ISBN: " + cleanIsbn);
+        }
+        if (shelfLocation == null || shelfLocation.trim().isEmpty()) {
+            throw new IllegalArgumentException("Der Standort darf nicht leer sein.");
+        }
+        int nextId = bookCopies.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
+        BookCopy bookCopy = new BookCopy(nextId, bookManager.getBook(cleanIsbn),
+                shelfLocation.trim(), new Date(), false, null, -1);
+        bookCopies.put(nextId, bookCopy);
+        return bookCopy;
     }
 
     /**

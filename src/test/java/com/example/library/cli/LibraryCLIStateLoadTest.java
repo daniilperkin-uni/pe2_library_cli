@@ -78,4 +78,27 @@ class LibraryCLIStateLoadTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Kunde mit ID 2");
     }
+
+    @Test
+    void loadState_restores_added_book_and_copy(@TempDir Path dir) throws IOException {
+        BookManager books = new BookManager();
+        CustomerManager customers = new CustomerManager();
+        BookCopyManager copies = new BookCopyManager();
+        books.importBooks("/bücher.csv");
+        customers.importCustomers("/benutzer.csv");
+        books.addBook("9783442267744", "Die Verwandlung",
+                java.util.List.of("Franz Kafka"), 2003, "München", "dtv", 2);
+        copies.addBookCopy("9783442267744", "REGAL7", books);
+        CsvExporter.save(dir, books, customers, copies, new ReservationManager());
+
+        BookManager books2 = new BookManager();
+        CustomerManager customers2 = new CustomerManager();
+        BookCopyManager copies2 = new BookCopyManager();
+        LibraryCLI.loadState(dir, books2, customers2, copies2, new ReservationManager());
+
+        assertThat(books2.getBook("9783442267744")).isNotNull();
+        assertThat(copies2.getBookCopies()).hasSize(1);
+        assertThat(copies2.getBookCopy(1).getBook().getIsbn()).isEqualTo("9783442267744");
+        assertThat(copies2.getBookCopy(1).isLent()).isFalse();
+    }
 }

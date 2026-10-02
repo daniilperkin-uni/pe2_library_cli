@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BookCopyManagerTest {
 
@@ -121,5 +122,34 @@ class BookCopyManagerTest {
         assertThat(printed).contains("Es existiert keine Buchkopie mit dieser ISBN: 0000000000");
         // the generic fallback must not repeat the same empty result
         assertThat(printed).doesNotContain("Es wurden keine Buchkopien gefunden.");
+    }
+
+    @Test
+    void addBookCopy_assigns_next_id_and_links_book() {
+        BookCopy copy = bookCopyManager.addBookCopy("3551551677", "REGAL7", bookManager);
+        assertThat(copy.getId()).isEqualTo(3);
+        assertThat(bookCopyManager.getBookCopy(3)).isSameAs(copy);
+        assertThat(copy.getBook().getIsbn()).isEqualTo("3551551677");
+        assertThat(copy.getShelfLocation()).isEqualTo("REGAL7");
+        assertThat(copy.isLent()).isFalse();
+        assertThat(copy.getCustomerID()).isEqualTo(-1);
+        assertThat(copy.getLoanDate()).isNull();
+        assertThat(copy.getAddedToLibrary()).isNotNull();
+    }
+
+    @Test
+    void addBookCopy_rejects_unknown_isbn() {
+        assertThatThrownBy(() -> bookCopyManager.addBookCopy("0000000000", "REGAL7", bookManager))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Es existiert kein Buch mit dieser ISBN: 0000000000");
+        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
+
+    @Test
+    void addBookCopy_rejects_blank_shelf_location() {
+        assertThatThrownBy(() -> bookCopyManager.addBookCopy("3551551677", "  ", bookManager))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Standort darf nicht leer");
+        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
     }
 }

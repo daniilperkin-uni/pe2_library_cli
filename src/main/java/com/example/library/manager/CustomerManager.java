@@ -15,7 +15,7 @@ import java.util.InputMismatchException;
 /**
  * Manages the collection of {@link Customer} objects in the library.
  *
- * <p>Provides lookup, deletion and CSV import functionality.</p>
+ * <p>Provides lookup, creation, deletion and CSV import functionality.</p>
  */
 public class CustomerManager {
 
@@ -122,6 +122,36 @@ public class CustomerManager {
                     break;
             }
         }
+    }
+
+    /**
+     * Creates a new customer. The customer ID is assigned automatically as
+     * the next free number; new customers start without paid fees.
+     *
+     * <p>Pure validation and storage — the interactive prompting lives in the
+     * CLI layer.</p>
+     *
+     * @param name      the last name (must not be blank)
+     * @param firstName the first name (must not be blank)
+     * @param address   the street address
+     * @param zipCode   the postal code
+     * @param city      the city of residence
+     * @return the created {@link Customer}
+     * @throws IllegalArgumentException if the last or first name is blank
+     */
+    public Customer addCustomer(String name, String firstName, String address,
+                                String zipCode, String city) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Der Nachname darf nicht leer sein.");
+        }
+        if (firstName == null || firstName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Der Vorname darf nicht leer sein.");
+        }
+        int nextId = customers.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
+        Customer customer = new Customer(nextId, name.trim(), firstName.trim(), address,
+                zipCode, city, false, new ArrayList<>());
+        customers.put(nextId, customer);
+        return customer;
     }
 
     /**

@@ -94,4 +94,26 @@ class LibraryCLITest {
         String output = run("7\n1\n3036959548\n2\n2\n");
         assertThat(output).contains("Vormerkung 1 für ISBN 3036959548 von Kunde 2 angelegt.");
     }
+
+    @Test
+    void addBookViaSubmenuCreatesBook() {
+        String output = run("1\n1\n9783442267744\nDie Verwandlung\nFranz Kafka\n2003\nMünchen\ndtv\n2\n1\n9\n");
+        assertThat(output).contains("Das Buch mit ISBN: 9783442267744 wurde angelegt.");
+    }
+
+    @Test
+    void addBookCopyViaSubmenuCreatesCopy() {
+        String output = run("2\n1\n3036959548\nSF99\n1\n9\n");
+        assertThat(output).contains("Die Buchkopie mit ID: 3 für ISBN 3036959548 wurde angelegt.");
+        assertThat(copies.getBookCopy(3)).isNotNull();
+        assertThat(copies.getBookCopy(3).isLent()).isFalse();
+        assertThat(copies.getBookCopy(3).getBook().getIsbn()).isEqualTo("3036959548");
+    }
+
+    @Test
+    void addCopyForUnknownIsbnListsExistingIsbns() {
+        String output = run("2\n1\n0000000000\nSF99\n1\n9\n");
+        assertThat(output).contains("Es existiert kein Buch mit dieser ISBN: 0000000000");
+        assertThat(output).contains("Vorhandene ISBNs:", "3551551677");
+    }
 }

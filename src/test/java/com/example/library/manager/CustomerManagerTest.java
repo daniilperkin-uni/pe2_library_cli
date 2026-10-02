@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CustomerManagerTest {
 
@@ -83,5 +84,30 @@ class CustomerManagerTest {
                 .contains("hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
         assertThat(customerManager.exists(2)).isTrue();
         assertThat(customerManager.getCustomers()).hasSize(2);
+    }
+
+    @Test
+    void addCustomer_assigns_next_id_and_defaults() {
+        Customer customer = customerManager.addCustomer("Beispiel", "Berta",
+                "Beispielweg 7", "54321", "Musterstadt");
+        assertThat(customer.getId()).isEqualTo(124);
+        assertThat(customerManager.getCustomer(124)).isSameAs(customer);
+        assertThat(customer.getName()).isEqualTo("Beispiel");
+        assertThat(customer.getFirstName()).isEqualTo("Berta");
+        assertThat(customer.isFeesPayed()).isFalse();
+        assertThat(customer.getBookCopies()).isEmpty();
+        assertThat(customerManager.getCustomers()).hasSize(3);
+    }
+
+    @Test
+    void addCustomer_rejects_blank_names() {
+        assertThatThrownBy(() -> customerManager.addCustomer("  ", "Berta",
+                "Beispielweg 7", "54321", "Musterstadt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Nachname darf nicht leer");
+        assertThatThrownBy(() -> customerManager.addCustomer("Beispiel", "  ",
+                "Beispielweg 7", "54321", "Musterstadt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Vorname darf nicht leer");
     }
 }

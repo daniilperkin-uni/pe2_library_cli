@@ -202,18 +202,71 @@ public class LibraryCLI {
      */
     public void manageBooks() {
         System.out.println("==BÜCHER VERWALTEN==");
-        System.out.println("1. Ein Buch löschen");
-        System.out.println("2. Zurück zum Hauptmenü");
+        System.out.println("1. Ein Buch hinzufügen");
+        System.out.println("2. Ein Buch löschen");
+        System.out.println("3. Zurück zum Hauptmenü");
         int choice = readInt("");
         switch (choice) {
             case 1:
-                bookManager.deleteBook(scanner, bookCopyManager);
+                addBook();
                 break;
             case 2:
+                bookManager.deleteBook(scanner, bookCopyManager);
+                break;
+            case 3:
                 break;
             default:
                 System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
+    }
+
+    /**
+     * Interactively creates a new book from user input. Every prompt can be
+     * cancelled with {@code -1}; invalid values are reported and the book is
+     * not created.
+     */
+    public void addBook() {
+        System.out.println("==EIN BUCH HINZUFÜGEN==");
+        String isbn = readIsbnOrCancel("ISBN des neuen Buches: ");
+        if (isbn == null) {
+            return;
+        }
+        String title = readTextOrCancel("Titel: ", "einen Titel");
+        if (title == null) {
+            return;
+        }
+        String authorsLine = readTextOrCancel("Autoren (mehrere mit ';' trennen): ",
+                "mindestens einen Autor");
+        if (authorsLine == null) {
+            return;
+        }
+        int year = readInt("Erscheinungsjahr: ");
+        if (year == -1) {
+            return;
+        }
+        String city = readTextOrCancel("Erscheinungsort: ", "einen Erscheinungsort");
+        if (city == null) {
+            return;
+        }
+        String publisher = readTextOrCancel("Verlag: ", "einen Verlag");
+        if (publisher == null) {
+            return;
+        }
+        int edition = readInt("Auflage: ");
+        if (edition == -1) {
+            return;
+        }
+        var authors = java.util.Arrays.stream(authorsLine.split(";"))
+                .map(String::trim)
+                .filter(author -> !author.isEmpty())
+                .toList();
+        try {
+            bookManager.addBook(isbn, title, authors, year, city, publisher, edition);
+            System.out.println("Das Buch mit ISBN: " + isbn + " wurde angelegt.");
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        }
+        promptReturnToMain();
     }
 
     /**
@@ -221,14 +274,18 @@ public class LibraryCLI {
      */
     public void manageBookCopies() {
         System.out.println("==BÜCHERKOPIEN VERWALTEN==");
-        System.out.println("1. Eine Buchkopie löschen");
-        System.out.println("2. Zurück zum Hauptmenü");
+        System.out.println("1. Eine Buchkopie hinzufügen");
+        System.out.println("2. Eine Buchkopie löschen");
+        System.out.println("3. Zurück zum Hauptmenü");
         int choice = readInt("");
         switch (choice) {
             case 1:
-                bookCopyManager.deleteBookCopy(scanner);
+                addBookCopy();
                 break;
             case 2:
+                bookCopyManager.deleteBookCopy(scanner);
+                break;
+            case 3:
                 break;
             default:
                 System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
@@ -236,22 +293,90 @@ public class LibraryCLI {
     }
 
     /**
+     * Interactively creates a new copy for an existing book. The ISBN and the
+     * shelf location can be cancelled with {@code -1}; an unknown ISBN lists
+     * the ISBNs that are actually present.
+     */
+    public void addBookCopy() {
+        System.out.println("==EINE BUCHKOPIE HINZUFÜGEN==");
+        String isbn = readIsbnOrCancel("ISBN des Buches, zu dem die Kopie gehört: ");
+        if (isbn == null) {
+            return;
+        }
+        String shelfLocation = readTextOrCancel("Standort (Regal): ", "einen Standort");
+        if (shelfLocation == null) {
+            return;
+        }
+        try {
+            var copy = bookCopyManager.addBookCopy(isbn, shelfLocation, bookManager);
+            System.out.println("Die Buchkopie mit ID: " + copy.getId()
+                    + " für ISBN " + isbn + " wurde angelegt.");
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            var isbns = bookManager.getBooks().keySet().stream().sorted().toList();
+            if (!isbns.isEmpty()) {
+                System.out.println("Vorhandene ISBNs: " + String.join(", ", isbns));
+            }
+        }
+        promptReturnToMain();
+    }
+
+    /**
      * Submenu for managing customers.
      */
     public void manageCustomers() {
         System.out.println("==KUNDEN VERWALTEN==");
-        System.out.println("1. Einen Kunden löschen");
-        System.out.println("2. Zurück zum Hauptmenü");
+        System.out.println("1. Einen Kunden hinzufügen");
+        System.out.println("2. Einen Kunden löschen");
+        System.out.println("3. Zurück zum Hauptmenü");
         int choice = readInt("");
         switch (choice) {
             case 1:
-                customerManager.deleteCustomer(scanner);
+                addCustomer();
                 break;
             case 2:
+                customerManager.deleteCustomer(scanner);
+                break;
+            case 3:
                 break;
             default:
                 System.out.println("Ungültige Option. Zurück zum Hauptmenü.");
         }
+    }
+
+    /**
+     * Interactively creates a new customer. The ID is assigned automatically;
+     * every prompt can be cancelled with {@code -1}.
+     */
+    public void addCustomer() {
+        System.out.println("==EINEN KUNDEN HINZUFÜGEN==");
+        String name = readTextOrCancel("Nachname: ", "einen Nachnamen");
+        if (name == null) {
+            return;
+        }
+        String firstName = readTextOrCancel("Vorname: ", "einen Vornamen");
+        if (firstName == null) {
+            return;
+        }
+        String address = readTextOrCancel("Adresse (Straße und Hausnummer): ", "eine Adresse");
+        if (address == null) {
+            return;
+        }
+        String zipCode = readTextOrCancel("Postleitzahl: ", "eine Postleitzahl");
+        if (zipCode == null) {
+            return;
+        }
+        String city = readTextOrCancel("Wohnort: ", "einen Wohnort");
+        if (city == null) {
+            return;
+        }
+        try {
+            var customer = customerManager.addCustomer(name, firstName, address, zipCode, city);
+            System.out.println("Der Kunde mit ID: " + customer.getId() + " wurde angelegt.");
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        }
+        promptReturnToMain();
     }
 
     /**
@@ -501,13 +626,15 @@ public class LibraryCLI {
     }
 
     /**
-     * Reads a non-empty text value, re-prompting on empty input and treating
+     * Reads a non-empty value, re-prompting on empty input and treating
      * {@code -1} or the end of the input as a cancel.
      *
-     * @param prompt the prompt printed before reading
+     * @param prompt     the prompt printed before reading
+     * @param errorLabel the value being read, used in the error message
+     *                   (e.g. {@code "eine ISBN"})
      * @return the trimmed input, or {@code null} to cancel
      */
-    private String readIsbnOrCancel(String prompt) {
+    private String readTextOrCancel(String prompt, String errorLabel) {
         while (true) {
             System.out.print(prompt);
             if (!scanner.hasNextLine()) {
@@ -516,13 +643,24 @@ public class LibraryCLI {
             }
             String input = scanner.nextLine().trim();
             if (input.isEmpty()) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine ISBN ein.");
+                System.out.println("Ungültige Eingabe! Bitte geben Sie " + errorLabel + " ein.");
             } else if ("-1".equals(input)) {
                 return null;
             } else {
                 return input;
             }
         }
+    }
+
+    /**
+     * Reads an ISBN, re-prompting on empty input and treating {@code -1} or
+     * the end of the input as a cancel.
+     *
+     * @param prompt the prompt printed before reading
+     * @return the trimmed ISBN, or {@code null} to cancel
+     */
+    private String readIsbnOrCancel(String prompt) {
+        return readTextOrCancel(prompt, "eine ISBN");
     }
 
     /**
