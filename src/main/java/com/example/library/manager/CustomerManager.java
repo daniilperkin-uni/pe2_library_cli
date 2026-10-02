@@ -53,10 +53,11 @@ public class CustomerManager {
     /**
      * Interactively deletes a customer by ID.
      *
-     * <p>The user is prompted for a customer ID, asked to confirm deletion,
-     * and then asked to confirm again with {@code j}/{@code n}/{@code x}.
-     * Entering {@code -1} at the ID prompt cancels the operation. Customers
-     * with outstanding loans cannot be deleted.</p>
+     * <p>The user is prompted for a customer ID and asked to confirm the
+     * deletion with the same single {@code 1. Bestätigen / 2. Abbrechen} step
+     * that the book and copy deletion flows use. Entering {@code -1} at the
+     * ID prompt cancels the operation. Customers with outstanding loans
+     * cannot be deleted.</p>
      *
      * @param scanner the scanner used for user input
      */
@@ -101,25 +102,14 @@ public class CustomerManager {
 
             switch (choice) {
                 case 1:
-                    boolean confirmed = false;
-                    while (!confirmed) {
-                        System.out.print("Kunde wirklich löschen? (j/n) oder 'x' zum Abbrechen: ");
-                        String resp = scanner.nextLine().trim().toLowerCase();
-                        if ("j".equals(resp)) {
-                            confirmed = true;
-                            customers.remove(id);
-                            System.out.println("Der Kunde mit ID: " + id + " wurde gelöscht.");
-                            choice = 2;
-                        } else if ("n".equals(resp) || "x".equals(resp)) {
-                            System.out.println("Löschvorgang abgebrochen.");
-                            return;
-                        } else {
-                            System.out.println("Bitte 'j', 'n' oder 'x' eingeben.");
-                        }
-                    }
+                    customers.remove(id);
+                    System.out.println("Der Kunde mit ID: " + id + " wurde gelöscht.");
+                    choice = 2;
                     break;
                 case 2:
                     break;
+                default:
+                    System.out.println("Ungültige Option. Bitte erneut wählen.");
             }
         }
     }

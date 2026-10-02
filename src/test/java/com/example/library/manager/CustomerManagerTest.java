@@ -52,11 +52,19 @@ class CustomerManagerTest {
     }
 
     @Test
-    void deleteCustomer_removes_customer_when_confirmed_with_j() {
-        Scanner scanner = new Scanner("2\n1\nj\n");
+    void deleteCustomer_removes_customer_when_confirmed() {
+        Scanner scanner = new Scanner("2\n1\n");
         customerManager.deleteCustomer(scanner);
         assertThat(customerManager.exists(2)).isFalse();
         assertThat(customerManager.getCustomers()).hasSize(1);
+    }
+
+    @Test
+    void deleteCustomer_cancels_when_abort_chosen() {
+        Scanner scanner = new Scanner("2\n2\n");
+        customerManager.deleteCustomer(scanner);
+        assertThat(customerManager.exists(2)).isTrue();
+        assertThat(customerManager.getCustomers()).hasSize(2);
     }
 
     @Test
