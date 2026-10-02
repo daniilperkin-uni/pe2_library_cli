@@ -116,4 +116,12 @@ class LibraryCLITest {
         assertThat(output).contains("Es existiert kein Buch mit dieser ISBN: 0000000000");
         assertThat(output).contains("Vorhandene ISBNs:", "3551551677");
     }
+
+    @Test
+    void returnBookShowsLateFee() {
+        String output = run("5\n2\n2\n2\n");
+        assertThat(output).contains("wurde erfolgreich vom Kunden 2 zurückgegeben.");
+        assertThat(output).contains("Verspätungsgebühr:");
+        assertThat(copies.getBookCopy(2).isLent()).isFalse();
+    }
 }
