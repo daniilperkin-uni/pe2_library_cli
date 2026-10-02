@@ -7,12 +7,13 @@
 ---
 
 pe2_library_cli is a command-line application for managing a small library
-system. It supports importing, listing, searching and deleting books and book
-copies, managing customers, performing loan and return operations, and
-generating various reports.
+system. It supports creating, importing, listing, searching and deleting books
+and book copies, managing customers, performing loan and return operations,
+and generating various reports.
 
 Features:
 
+- Creating books, book copies and customers directly in the menus
 - CSV import of books, copies and customers (quoted-field aware, UTF-8)
 - Loans, returns and late-return fines
 - Reservations (Vormerkungen) with a per-title (ISBN) queue
@@ -104,9 +105,9 @@ number and pressing Enter.
 
 ### Menu options
 
-1. Bücher verwalten — manage books (delete by ISBN)
-2. Buchkopien verwalten — manage book copies (delete by ID)
-3. Kunden verwalten — manage customers (delete by ID)
+1. Bücher verwalten — manage books (create / delete by ISBN)
+2. Buchkopien verwalten — manage book copies (create / delete by ID)
+3. Kunden verwalten — manage customers (create / delete by ID)
 4. Eine Buchkopie ausleihen — loan a book copy to a customer
 5. Eine Buchkopie zurückgeben — return a book copy
 6. Eine Buchkopie suchen — search book copies by ISBN, title, or author
@@ -116,11 +117,12 @@ number and pressing Enter.
 
 ## Modules
 
-- **BookManager** — import books from `bücher.csv`; delete/lookup books by ISBN.
-- **BookCopyManager** — import book copies from `buchkopien.csv`; delete/search
-  copies by ISBN, title, or author.
-- **CustomerManager** — import customers from `benutzer.csv`; delete/lookup
-  customers by ID.
+- **BookManager** — import books from `bücher.csv`; create/delete/lookup
+  books by ISBN.
+- **BookCopyManager** — import book copies from `buchkopien.csv`;
+  create/delete/search copies by ISBN, title, or author.
+- **CustomerManager** — import customers from `benutzer.csv`;
+  create/delete/lookup customers by ID.
 - **LoanService** — pure business logic for loaning and returning book copies;
   throws on invalid operations (no console I/O).
 - **ReservationManager** — per-title (ISBN-keyed) reservation queues;
