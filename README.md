@@ -11,6 +11,10 @@ system. It supports creating, importing, listing, searching and deleting books
 and book copies, managing customers, performing loan and return operations,
 and generating various reports.
 
+**Live showcase:** a real session (German menu, loan, late-return fine, ISBN
+reservations) replays in the browser on the
+[uni-old-projects site](https://daniilperkin-uni.github.io/uni-old-projects/#pe2_library_cli).
+
 Features:
 
 - Creating books, book copies and customers directly in the menus
