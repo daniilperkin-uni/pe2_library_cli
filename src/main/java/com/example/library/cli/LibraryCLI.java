@@ -10,6 +10,7 @@ import com.example.library.service.ReportService;
 import com.example.library.csv.CsvExporter;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.InputMismatchException;
@@ -65,13 +66,26 @@ public class LibraryCLI {
     /**
      * Application entry point.
      *
-     * <p>Wires up the managers and services, imports the CSV fixtures from the
-     * classpath, and starts the interactive menu loop.</p>
+     * <p>Handles {@code --help} and {@code --version} before anything is wired
+     * up, then builds the managers and services, imports the CSV fixtures from
+     * the classpath, and starts the interactive menu loop.</p>
      *
      * @param args optional data directory as the first argument (defaults to
-     *             {@code ./data}); further arguments are ignored
+     *             {@code ./data}); {@code --help} and {@code --version} print
+     *             and exit without touching any data
      */
     public static void main(String[] args) {
+        for (String arg : args) {
+            if ("--help".equals(arg) || "-h".equals(arg)) {
+                printUsage(System.out);
+                return;
+            }
+            if ("--version".equals(arg) || "-V".equals(arg)) {
+                System.out.println("pe2-library-cli " + version());
+                return;
+            }
+        }
+
         BookManager bookManager = new BookManager();
         BookCopyManager bookCopyManager = new BookCopyManager();
         CustomerManager customerManager = new CustomerManager();
@@ -88,9 +102,11 @@ public class LibraryCLI {
         } catch (RuntimeException e) {
             // Refuse to start on unreadable or inconsistent saved data instead
             // of crashing with a stack trace. No user action has happened yet,
-            // so there is nothing to save on this exit path.
-            System.out.println("Fehler beim Laden der Daten: " + e.getMessage());
-            System.out.println("Bitte das Datenverzeichnis prüfen oder entfernen: "
+            // so there is nothing to save on this exit path. Startup failures
+            // go to stderr: a caller redirecting stdout into a file must not
+            // mistake them for normal menu output.
+            System.err.println("Fehler beim Laden der Daten: " + e.getMessage());
+            System.err.println("Bitte das Datenverzeichnis prüfen oder entfernen: "
                     + dataDir.toAbsolutePath());
             System.exit(1);
         }
@@ -99,6 +115,37 @@ public class LibraryCLI {
                 customerManager, reservationManager, loanService, reportService, scanner);
         libraryCLI.start();
         libraryCLI.save(dataDir);
+    }
+
+    /**
+     * Prints the command-line usage of the application.
+     *
+     * @param out the target stream (stdout in production, capturable in tests)
+     */
+    static void printUsage(PrintStream out) {
+        out.println("pe2-library-cli " + version());
+        out.println();
+        out.println("Benutzung: java -jar pe2-library-cli.jar [DATA-DIR] [OPTION]");
+        out.println();
+        out.println("  DATA-DIR   Verzeichnis für die gespeicherten CSV-Dateien");
+        out.println("             (Standard: ./data)");
+        out.println("  --help, -h     zeigt diese Hilfe");
+        out.println("  --version, -V  zeigt die Version");
+        out.println();
+        out.println("Ohne Optionen startet das interaktive Menü. Der Zustand wird");
+        out.println("beim Beenden (Menüpunkt 9) in DATA-DIR gespeichert.");
+    }
+
+    /**
+     * Reads the version from the packaged manifest, falling back to
+     * {@code dev} when the class is run from an unpacked classes directory.
+     *
+     * @return the implementation version or {@code dev}
+     */
+    static String version() {
+        String implementationVersion = LibraryCLI.class.getPackage()
+                .getImplementationVersion();
+        return implementationVersion != null ? implementationVersion : "dev";
     }
 
     /**

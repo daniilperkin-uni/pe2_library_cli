@@ -72,6 +72,13 @@
                     <archive>
                         <manifest>
                             <mainClass>com.example.library.cli.LibraryCLI</mainClass>
+                            <!--
+                                Ohne addDefaultImplementationEntries steht keine
+                                Implementation-Version im Manifest, dann meldet
+                                die Versionsabfrage nur "dev". Der Eintrag
+                                schreibt die Projektversion (1.0-SNAPSHOT) hinein.
+                            -->
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>
                 </configuration>
