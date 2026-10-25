@@ -35,9 +35,11 @@ for pushes/PRs to `master` (plus `merge_group` and manual
 1. **Layering.** `cli` → `service` → `manager` → `model`. The CLI layer owns
    all `Scanner` / `System.out` I/O. Service classes contain **only** pure
    business logic — no `System.out`, no `Scanner`, no `System.exit`.
-   (Known open item: the interactive delete/search flows in `BookManager` /
-   `BookCopyManager` / `CustomerManager` still own their `Scanner` I/O; the
-   rule above is the target for all new code.)
+   The manager layer holds **no** `Scanner` at all: the interactive
+   delete/search flows were replaced by pure `deletionBlocker(...)` +
+   `remove...()` pairs and `findByIsbn/Title/Author`, and the CLI drives the
+   prompts. Remaining manager-side printing is the CSV import feedback
+   ("… wurden erfolgreich importiert."), which is still on the to-do list.
 2. **Errors as exceptions.** Services throw (`IllegalArgumentException` for
    missing entities, `IllegalStateException` for invalid state) instead of
    printing and returning silently. The CLI catches and prints them.
@@ -91,8 +93,10 @@ for pushes/PRs to `master` (plus `merge_group` and manual
   `customerID == -1` after a successful loan, or `contains(copy) == false`).
   The current tests assert the correct post-conditions — do not "fix" them
   back.
-- `deleteBook` / `deleteBookCopy` / `deleteCustomer` are interactive; tests
-  drive them by constructing a `Scanner` over a canned input string.
+- `deleteBook` / `deleteBookCopy` / `deleteCustomer` / `searchBookCopies` live
+  in `LibraryCLI` now; `LibraryCLITest` drives them end-to-end by constructing a
+  `Scanner` over a canned input string. The managers only answer
+  `deletionBlocker(...)` and the `findBy...` lookups.
 
 ## File map (post-refactor)
 
