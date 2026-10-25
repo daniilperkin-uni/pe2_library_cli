@@ -66,62 +66,41 @@ class BookCopyManagerTest {
     }
 
     @Test
-    void deleteBookCopy_removes_copy_when_confirmed() {
-        Scanner scanner = new Scanner("1\n1\n");
-        bookCopyManager.deleteBookCopy(scanner);
+    void removeBookCopy_removes_the_copy() {
+        assertThat(bookCopyManager.removeBookCopy(1)).isTrue();
         assertThat(bookCopyManager.exists(1)).isFalse();
         assertThat(bookCopyManager.getBookCopies()).hasSize(1);
     }
 
     @Test
-    void deleteBookCopy_refuses_when_copy_is_lent() {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        try {
-            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
-            bookCopyManager.deleteBookCopy(new Scanner("2\n-1\n"));
-        } finally {
-            System.setOut(originalOut);
-        }
-
-        assertThat(out.toString(StandardCharsets.UTF_8))
+    void deletionBlocker_refuses_a_lent_copy() {
+        assertThat(bookCopyManager.deletionBlocker(2))
                 .contains("ist verliehen und kann nicht gelöscht werden.");
-        assertThat(bookCopyManager.exists(2)).isTrue();
-        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+        assertThat(bookCopyManager.deletionBlocker(1)).isNull();
+        assertThat(bookCopyManager.deletionBlocker(999))
+                .contains("Es existiert keine Buchkopie mit dieser ID: 999");
     }
 
     @Test
-    void searchBookCopies_by_isbn_finds_matching_copies() {
-        Scanner scanner = new Scanner("1\n3036959548\n");
-        bookCopyManager.searchBookCopies(scanner);
+    void findByIsbn_returns_every_copy_of_the_book() {
         // both copies reference ISBN 3036959548
-        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+        assertThat(bookCopyManager.findByIsbn("3036959548")).hasSize(2);
+        assertThat(bookCopyManager.findByIsbn("0000000000")).isEmpty();
     }
 
     @Test
-    void searchBookCopies_by_title_finds_matching_copies() {
-        // Option 2 = title search; title of book for ISBN 3036959548
+    void findByTitle_ignores_case() {
         String title = bookCopyManager.getBookCopy(1).getBook().getTitle();
-        Scanner scanner = new Scanner("2\n" + title + "\n");
-        bookCopyManager.searchBookCopies(scanner);
-        // no exception thrown and copies remain
-        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+        assertThat(bookCopyManager.findByTitle(title)).hasSize(2);
+        assertThat(bookCopyManager.findByTitle(title.toUpperCase())).hasSize(2);
+        assertThat(bookCopyManager.findByTitle("kein solcher titel")).isEmpty();
     }
 
     @Test
-    void searchBookCopies_reports_a_missing_isbn_once() {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        try {
-            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
-            bookCopyManager.searchBookCopies(new Scanner("1\n0000000000\n"));
-        } finally {
-            System.setOut(originalOut);
-        }
-        String printed = out.toString(StandardCharsets.UTF_8);
-        assertThat(printed).contains("Es existiert keine Buchkopie mit dieser ISBN: 0000000000");
-        // the generic fallback must not repeat the same empty result
-        assertThat(printed).doesNotContain("Es wurden keine Buchkopien gefunden.");
+    void findByAuthor_returns_the_author_s_copies() {
+        String author = bookCopyManager.getBookCopy(1).getBook().getAuthors().get(0);
+        assertThat(bookCopyManager.findByAuthor(author)).isNotEmpty();
+        assertThat(bookCopyManager.findByAuthor("Niemand")).isEmpty();
     }
 
     @Test

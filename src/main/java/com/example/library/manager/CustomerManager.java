@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.InputMismatchException;
 
 /**
  * Manages the collection of {@link Customer} objects in the library.
@@ -50,68 +48,36 @@ public class CustomerManager {
         return customers.containsKey(id);
     }
 
-    /**
-     * Interactively deletes a customer by ID.
+        /**
+     * Reports why a customer cannot be deleted, or {@code null} when it can.
      *
-     * <p>The user is prompted for a customer ID and asked to confirm the
-     * deletion with the same single {@code 1. Bestätigen / 2. Abbrechen} step
-     * that the book and copy deletion flows use. Entering {@code -1} at the
-     * ID prompt cancels the operation. Customers with outstanding loans
-     * cannot be deleted.</p>
+     * <p>Pure check: the CLI asks for the ID, prints the reason and only then
+     * calls {@link #removeCustomer(int)}. It stays in the manager because it
+     * needs the customer map and their loans — but it no longer reads from
+     * {@code System.in}.</p>
      *
-     * @param scanner the scanner used for user input
+     * @param id the customer ID to check
+     * @return a German reason, or {@code null} when deletion is allowed
      */
-    public void deleteCustomer(Scanner scanner) {
-        System.out.println("==EINEN KUNDEN LÖSCHEN==");
-        int choice = -1;
-        int id = -1;
-        while (choice != 2) {
-            System.out.println("Bitte geben Sie die ID des Kunden ein (oder -1 zum Abbrechen):");
-            try {
-                id = scanner.nextInt();
-                scanner.nextLine();
-            } catch (InputMismatchException e) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-                scanner.nextLine();
-                continue;
-            }
-            if (id == -1) {
-                break;
-            }
-            if (!customers.containsKey(id)) {
-                System.out.println("Es existiert kein Kunde mit dieser ID: " + id);
-                continue;
-            }
-            if (!customers.get(id).getBookCopies().isEmpty()) {
-                System.out.println("Der Kunde mit ID: " + id
-                        + " hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
-                continue;
-            }
-
-            System.out.println("Der Kunde mit ID: " + id + " wird gelöscht.");
-            System.out.println("1. Bestätigen");
-            System.out.println("2. Abbrechen");
-            try {
-                choice = scanner.nextInt();
-                scanner.nextLine();
-            } catch (InputMismatchException e) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-                scanner.nextLine();
-                continue;
-            }
-
-            switch (choice) {
-                case 1:
-                    customers.remove(id);
-                    System.out.println("Der Kunde mit ID: " + id + " wurde gelöscht.");
-                    choice = 2;
-                    break;
-                case 2:
-                    break;
-                default:
-                    System.out.println("Ungültige Option. Bitte erneut wählen.");
-            }
+    public String deletionBlocker(int id) {
+        if (!customers.containsKey(id)) {
+            return "Es existiert kein Kunde mit dieser ID: " + id;
         }
+        if (!customers.get(id).getBookCopies().isEmpty()) {
+            return "Der Kunde mit ID: " + id
+                    + " hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.";
+        }
+        return null;
+    }
+
+    /**
+     * Removes a customer without any checks; use {@link #deletionBlocker} first.
+     *
+     * @param id the customer ID to remove
+     * @return {@code true} when a customer was removed
+     */
+    public boolean removeCustomer(int id) {
+        return customers.remove(id) != null;
     }
 
     /**

@@ -4,6 +4,7 @@ import com.example.library.manager.BookCopyManager;
 import com.example.library.manager.BookManager;
 import com.example.library.manager.CustomerManager;
 import com.example.library.manager.ReservationManager;
+import com.example.library.model.BookCopy;
 import com.example.library.service.LoanService;
 import com.example.library.service.ReportService;
 
@@ -227,7 +228,7 @@ public class LibraryCLI {
                     returnBook();
                     break;
                 case 6:
-                    bookCopyManager.searchBookCopies(scanner);
+                    searchBookCopies();
                     break;
                 case 7:
                     manageReservations();
@@ -258,7 +259,7 @@ public class LibraryCLI {
                 addBook();
                 break;
             case 2:
-                bookManager.deleteBook(scanner, bookCopyManager);
+                deleteBook();
                 break;
             case 3:
                 break;
@@ -330,7 +331,7 @@ public class LibraryCLI {
                 addBookCopy();
                 break;
             case 2:
-                bookCopyManager.deleteBookCopy(scanner);
+                deleteBookCopy();
                 break;
             case 3:
                 break;
@@ -382,7 +383,7 @@ public class LibraryCLI {
                 addCustomer();
                 break;
             case 2:
-                customerManager.deleteCustomer(scanner);
+                deleteCustomer();
                 break;
             case 3:
                 break;
@@ -752,7 +753,180 @@ public class LibraryCLI {
         }
     }
 
+        /**
+     * Interactively deletes a book.
+     *
+     * <p>The ISBN is asked for repeatedly until the book is gone, the user
+     * cancels with {@code -1}, or the deletion is refused (unknown ISBN,
+     * remaining copies). All prompting lives here; the manager only answers
+     * {@link BookManager#deletionBlocker}.</p>
+     */
+    public void deleteBook() {
+        System.out.println("==EIN BUCH LÖSCHEN==");
+        while (true) {
+            String isbn = readTextOrCancel(
+                    "Bitte geben Sie die ISBN des Buches ein (oder -1 zum Abbrechen): ",
+                    "eine ISBN");
+            if (isbn == null) {
+                return;
+            }
+            String blocker = bookManager.deletionBlocker(isbn, bookCopyManager);
+            if (blocker != null) {
+                System.out.println(blocker);
+                continue;
+            }
+            System.out.println("Das Buch mit ISBN: " + isbn + " wird gelöscht.");
+            if (!confirmDeletion()) {
+                return;
+            }
+            bookManager.removeBook(isbn);
+            System.out.println("Das Buch mit ISBN: " + isbn + " wurde gelöscht.");
+            return;
+        }
+    }
+
     /**
+     * Interactively deletes a book copy. A lent copy is refused; the ID is
+     * asked for again in that case.
+     */
+    public void deleteBookCopy() {
+        System.out.println("==EINE BUCHKOPIE LÖSCHEN==");
+        while (true) {
+            System.out.print("Bitte geben Sie die Buchkopie-ID ein (oder -1 zum Abbrechen): ");
+            int id = readInt("");
+            if (!running || id == -1) {
+                return;
+            }
+            String blocker = bookCopyManager.deletionBlocker(id);
+            if (blocker != null) {
+                System.out.println(blocker);
+                continue;
+            }
+            System.out.println("Die Buchkopie mit ID: " + id + " wird gelöscht.");
+            if (!confirmDeletion()) {
+                return;
+            }
+            bookCopyManager.removeBookCopy(id);
+            System.out.println("Die Buchkopie mit ID: " + id + " wurde gelöscht.");
+            return;
+        }
+    }
+
+    /**
+     * Interactively deletes a customer. A customer with outstanding loans is
+     * refused; the ID is asked for again in that case.
+     */
+    public void deleteCustomer() {
+        System.out.println("==EINEN KUNDEN LÖSCHEN==");
+        while (true) {
+            System.out.print("Bitte geben Sie die ID des Kunden ein (oder -1 zum Abbrechen): ");
+            int id = readInt("");
+            if (!running || id == -1) {
+                return;
+            }
+            String blocker = customerManager.deletionBlocker(id);
+            if (blocker != null) {
+                System.out.println(blocker);
+                continue;
+            }
+            System.out.println("Der Kunde mit ID: " + id + " wird gelöscht.");
+            if (!confirmDeletion()) {
+                return;
+            }
+            customerManager.removeCustomer(id);
+            System.out.println("Der Kunde mit ID: " + id + " wurde gelöscht.");
+            return;
+        }
+    }
+
+    /**
+     * Interactively searches book copies by ISBN, title or author and prints
+     * every match. The manager exposes only the pure finders.
+     */
+    public void searchBookCopies() {
+        System.out.println("==EINE BUCHKOPIE SUCHEN==");
+        System.out.println("1. ISBN");
+        System.out.println("2. Buchtitel");
+        System.out.println("3. Autor");
+        System.out.println("4. Zurück zum Hauptmenü");
+        int choice = readInt("");
+        if (!running) {
+            return;
+        }
+        List<BookCopy> found;
+        switch (choice) {
+            case 1:
+                String isbn = readTextOrCancel(
+                        "Bitte geben Sie die ISBN der Buchkopie ein: ", "eine ISBN");
+                if (isbn == null) {
+                    return;
+                }
+                found = bookCopyManager.findByIsbn(isbn);
+                if (found.isEmpty()) {
+                    System.out.println("Es existiert keine Buchkopie mit dieser ISBN: " + isbn);
+                }
+                break;
+            case 2:
+                String title = readTextOrCancel(
+                        "Bitte geben Sie den Buchtitel der Buchkopie ein: ", "einen Buchtitel");
+                if (title == null) {
+                    return;
+                }
+                found = bookCopyManager.findByTitle(title);
+                if (found.isEmpty()) {
+                    System.out.println(
+                            "Es existiert keine Buchkopie mit diesem Buchtitel: " + title);
+                }
+                break;
+            case 3:
+                String author = readTextOrCancel(
+                        "Bitte geben Sie den Autor der Buchkopie ein (oder -1 zum Abbrechen): ",
+                        "einen Autor");
+                if (author == null) {
+                    return;
+                }
+                found = bookCopyManager.findByAuthor(author);
+                if (found.isEmpty()) {
+                    System.out.println("Es existiert keine Buchkopie mit diesem Autor: " + author);
+                }
+                break;
+            case 4:
+                return;
+            default:
+                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+                return;
+        }
+        for (BookCopy bookCopy : found) {
+            System.out.println(bookCopy);
+        }
+    }
+
+    /**
+     * Asks the single {@code 1. Bestätigen / 2. Abbrechen} question shared by
+     * all three deletion flows.
+     *
+     * @return {@code true} when the user confirmed, {@code false} on cancel or
+     *         when the input ended
+     */
+    private boolean confirmDeletion() {
+        System.out.println("1. Bestätigen");
+        System.out.println("2. Abbrechen");
+        while (true) {
+            int choice = readInt("");
+            if (!running) {
+                return false;
+            }
+            if (choice == 1) {
+                return true;
+            }
+            if (choice == 2) {
+                return false;
+            }
+            System.out.println("Ungültige Option. Bitte erneut wählen.");
+        }
+    }
+
+/**
      * Reads an integer from the scanner, handling
      * {@link InputMismatchException} gracefully in every submenu.
      *

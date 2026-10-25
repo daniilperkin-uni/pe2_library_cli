@@ -63,37 +63,37 @@ class BookManagerTest {
     }
 
     @Test
-    void deleteBook_removes_book_when_confirmed() {
-        Scanner scanner = new Scanner("3551551677\n1\n");
-        bookManager.deleteBook(scanner, new BookCopyManager());
+    void removeBook_removes_the_book() {
+        assertThat(bookManager.removeBook("3551551677")).isTrue();
         assertThat(bookManager.exists("3551551677")).isFalse();
         assertThat(bookManager.getBooks()).hasSize(2);
     }
 
     @Test
-    void deleteBook_cancels_when_minus_one_entered() {
-        Scanner scanner = new Scanner("-1\n");
-        bookManager.deleteBook(scanner, new BookCopyManager());
+    void removeBook_reports_false_for_an_unknown_isbn() {
+        assertThat(bookManager.removeBook("does-not-exist")).isFalse();
         assertThat(bookManager.getBooks()).hasSize(3);
     }
 
     @Test
-    void deleteBook_refuses_when_copies_reference_the_isbn() {
+    void deletionBlocker_allows_a_book_without_copies() {
+        assertThat(bookManager.deletionBlocker("3551551677", new BookCopyManager())).isNull();
+    }
+
+    @Test
+    void deletionBlocker_reports_an_unknown_isbn() {
+        assertThat(bookManager.deletionBlocker("nope", new BookCopyManager()))
+                .contains("Es existiert kein Buch mit dieser ID: nope");
+    }
+
+    @Test
+    void deletionBlocker_refuses_a_book_that_still_has_copies() {
         CustomerManager customerManager = new CustomerManager();
         customerManager.importCustomers("/benutzer.csv");
         BookCopyManager bookCopyManager = new BookCopyManager();
         bookCopyManager.importBookCopies("/buchkopien.csv", bookManager, customerManager);
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        try {
-            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
-            bookManager.deleteBook(new Scanner("3036959548\n-1\n"), bookCopyManager);
-        } finally {
-            System.setOut(originalOut);
-        }
-
-        assertThat(out.toString(StandardCharsets.UTF_8))
+        assertThat(bookManager.deletionBlocker("3036959548", bookCopyManager))
                 .contains("hat noch Buchkopien und kann nicht gelöscht werden.");
         assertThat(bookManager.exists("3036959548")).isTrue();
         assertThat(bookManager.getBooks()).hasSize(3);

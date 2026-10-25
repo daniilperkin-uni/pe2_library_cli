@@ -2,16 +2,16 @@ package com.example.library.manager;
 
 import com.example.library.csv.CsvImporter;
 import com.example.library.model.Book;
+import com.example.library.model.BookCopy;
 
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.InputMismatchException;
 
 /**
  * Manages the collection of {@link Book} objects in the library.
@@ -51,65 +51,39 @@ public class BookManager {
         return books.containsKey(isbn);
     }
 
-    /**
-     * Interactively deletes a book by ISBN.
+        /**
+     * Reports why a book cannot be deleted, or {@code null} when it can.
      *
-     * <p>The user is prompted for an ISBN and asked to confirm deletion.
-     * Entering {@code -1} cancels the operation. A book that still has book
-     * copies cannot be deleted.</p>
+     * <p>Pure check: the CLI asks for the ISBN, prints the reason and only then
+     * calls {@link #removeBook(String)}. It stays in the manager because it
+     * needs the book map and the copies that reference it — but it no longer
+     * reads from {@code System.in}.</p>
      *
-     * @param scanner         the scanner used for user input
-     * @param bookCopyManager the manager used to check for remaining copies
+     * @param isbn            the ISBN to check
+     * @param bookCopyManager the manager holding the copies
+     * @return a German reason, or {@code null} when deletion is allowed
      */
-    public void deleteBook(Scanner scanner, BookCopyManager bookCopyManager) {
-        System.out.println("==EIN BUCH LÖSCHEN==");
-        int choice = -1;
-        String isbn;
-        while (choice != 2) {
-            System.out.println("Bitte geben Sie die ISBN des Buches ein (oder -1 zum Abbrechen):");
-            isbn = scanner.nextLine();
-            if (isbn.equals("-1")) {
-                break;
-            }
-            if (!books.containsKey(isbn)) {
-                System.out.println("Es existiert kein Buch mit dieser ID: " + isbn);
-                continue;
-            }
-            boolean referencedByCopies = false;
-            for (var copy : bookCopyManager.getBookCopies().values()) {
-                if (copy.getBook() != null && isbn.equals(copy.getBook().getIsbn())) {
-                    referencedByCopies = true;
-                    break;
-                }
-            }
-            if (referencedByCopies) {
-                System.out.println("Das Buch mit ISBN: " + isbn
-                        + " hat noch Buchkopien und kann nicht gelöscht werden.");
-                continue;
-            }
-            System.out.println("Das Buch mit ISBN: " + isbn + " wird gelöscht.");
-            System.out.println("1. Bestätigen");
-            System.out.println("2. Abbrechen");
-            try {
-                choice = scanner.nextInt();
-                scanner.nextLine();
-            } catch (InputMismatchException e) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-                scanner.nextLine();
-                continue;
-            }
-            switch (choice) {
-                case 1:
-                    books.remove(isbn);
-                    System.out.println("Das Buch mit ISBN: " + isbn + " wurde gelöscht.");
-                    choice = 2;
-                    break;
-                case 2:
-                    break;
-                default:
-                    System.out.println("Ungültige Option. Bitte erneut wählen.");
+    public String deletionBlocker(String isbn, BookCopyManager bookCopyManager) {
+        if (!books.containsKey(isbn)) {
+            return "Es existiert kein Buch mit dieser ID: " + isbn;
+        }
+        for (BookCopy copy : bookCopyManager.getBookCopies().values()) {
+            if (copy.getBook() != null && isbn.equals(copy.getBook().getIsbn())) {
+                return "Das Buch mit ISBN: " + isbn
+                        + " hat noch Buchkopien und kann nicht gelöscht werden.";
             }
         }
+        return null;
+    }
+
+    /**
+     * Removes a book without any checks; use {@link #deletionBlocker} first.
+     *
+     * @param isbn the ISBN to remove
+     * @return {@code true} when a book was removed
+     */
+    public boolean removeBook(String isbn) {
+        return books.remove(isbn) != null;
     }
 
     /**

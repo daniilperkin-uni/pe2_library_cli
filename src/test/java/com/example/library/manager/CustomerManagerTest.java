@@ -52,46 +52,37 @@ class CustomerManagerTest {
     }
 
     @Test
-    void deleteCustomer_removes_customer_when_confirmed() {
-        Scanner scanner = new Scanner("2\n1\n");
-        customerManager.deleteCustomer(scanner);
+    void removeCustomer_removes_the_customer() {
+        assertThat(customerManager.removeCustomer(2)).isTrue();
         assertThat(customerManager.exists(2)).isFalse();
         assertThat(customerManager.getCustomers()).hasSize(1);
     }
 
     @Test
-    void deleteCustomer_cancels_when_abort_chosen() {
-        Scanner scanner = new Scanner("2\n2\n");
-        customerManager.deleteCustomer(scanner);
-        assertThat(customerManager.exists(2)).isTrue();
+    void removeCustomer_reports_false_for_an_unknown_id() {
+        assertThat(customerManager.removeCustomer(999)).isFalse();
         assertThat(customerManager.getCustomers()).hasSize(2);
     }
 
     @Test
-    void deleteCustomer_cancels_with_minus_one() {
-        Scanner scanner = new Scanner("-1\n");
-        customerManager.deleteCustomer(scanner);
-        assertThat(customerManager.getCustomers()).hasSize(2);
+    void deletionBlocker_allows_a_customer_without_loans() {
+        assertThat(customerManager.deletionBlocker(2)).isNull();
     }
 
     @Test
-    void deleteCustomer_refuses_when_customer_has_open_loans() {
+    void deletionBlocker_reports_an_unknown_id() {
+        assertThat(customerManager.deletionBlocker(999))
+                .contains("Es existiert kein Kunde mit dieser ID: 999");
+    }
+
+    @Test
+    void deletionBlocker_refuses_a_customer_with_open_loans() {
         customerManager.getCustomer(2).addBookCopy(
                 new BookCopy(99, null, "A1", new Date(), true, LocalDate.now(), 2));
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        try {
-            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
-            customerManager.deleteCustomer(new Scanner("2\n-1\n"));
-        } finally {
-            System.setOut(originalOut);
-        }
-
-        assertThat(out.toString(StandardCharsets.UTF_8))
+        assertThat(customerManager.deletionBlocker(2))
                 .contains("hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
         assertThat(customerManager.exists(2)).isTrue();
-        assertThat(customerManager.getCustomers()).hasSize(2);
     }
 
     @Test

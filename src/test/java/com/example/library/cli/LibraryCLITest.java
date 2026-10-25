@@ -124,4 +124,51 @@ class LibraryCLITest {
         assertThat(output).contains("Verspätungsgebühr:");
         assertThat(copies.getBookCopy(2).isLent()).isFalse();
     }
+
+    @Test
+    void deleteBookViaSubmenuRemovesTheBookAfterConfirmation() {
+        String output = run("1\n2\n3551551677\n1\n9\n");
+        assertThat(output).contains("Das Buch mit ISBN: 3551551677 wurde gelöscht.");
+    }
+
+    @Test
+    void deleteBookViaSubmenuCancelsOnMinusOne() {
+        String output = run("1\n2\n-1\n9\n");
+        assertThat(output).doesNotContain("wurde gelöscht.");
+    }
+
+    @Test
+    void deleteBookCopyViaSubmenuRefusesALentCopyAndReprompts() {
+        String output = run("2\n2\n2\n-1\n9\n");
+        assertThat(output).contains("ist verliehen und kann nicht gelöscht werden.");
+        assertThat(output).doesNotContain("wurde gelöscht.");
+    }
+
+    @Test
+    void deleteCustomerViaSubmenuRemovesTheCustomerAfterConfirmation() {
+        // Customer 2 still holds copy 2 in the fixture, so 123 is the deletable one.
+        String output = run("3\n2\n123\n1\n9\n");
+        assertThat(output).contains("Der Kunde mit ID: 123 wurde gelöscht.");
+    }
+
+    @Test
+    void deleteCustomerViaSubmenuRefusesACustomerWithOpenLoans() {
+        String output = run("3\n2\n2\n-1\n9\n");
+        assertThat(output)
+                .contains("hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
+        assertThat(output).doesNotContain("wurde gelöscht.");
+    }
+
+    @Test
+    void searchViaSubmenuPrintsTheMatchingCopies() {
+        String output = run("6\n1\n3036959548\n9\n");
+        assertThat(output).contains("==EINE BUCHKOPIE SUCHEN==");
+        assertThat(output).doesNotContain("Es existiert keine Buchkopie");
+    }
+
+    @Test
+    void searchViaSubmenuReportsAnUnknownIsbn() {
+        String output = run("6\n1\n0000000000\n9\n");
+        assertThat(output).contains("Es existiert keine Buchkopie mit dieser ISBN: 0000000000");
+    }
 }

@@ -15,8 +15,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.InputMismatchException;
 
 /**
  * Manages the collection of {@link BookCopy} objects in the library.
@@ -56,66 +54,36 @@ public class BookCopyManager {
         return bookCopies.containsKey(id);
     }
 
-    /**
-     * Interactively deletes a book copy by ID.
+        /**
+     * Reports why a book copy cannot be deleted, or {@code null} when it can.
      *
-     * <p>The user is prompted for a copy ID and asked to confirm deletion.
-     * Entering {@code -1} cancels the operation. A lent copy cannot be
-     * deleted.</p>
+     * <p>Pure check: the CLI asks for the ID, prints the reason and only then
+     * calls {@link #removeBookCopy(int)}. It stays in the manager because it
+     * needs the copy map — but it no longer reads from {@code System.in}.</p>
      *
-     * @param scanner the scanner used for user input
+     * @param id the copy ID to check
+     * @return a German reason, or {@code null} when deletion is allowed
      */
-    public void deleteBookCopy(Scanner scanner) {
-        System.out.println("==EINE BUCHKOPIE LÖSCHEN==");
-        int choice = -1;
-        int id = -1;
-        while (choice != 2) {
-            System.out.println("Bitte geben Sie die Buchkopie-ID ein (oder -1 zum Abbrechen):");
-            try {
-                id = scanner.nextInt();
-                scanner.nextLine();
-            } catch (InputMismatchException e) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-                scanner.nextLine();
-                continue;
-            }
-            if (id == -1) {
-                break;
-            }
-            if (!bookCopies.containsKey(id)) {
-                System.out.println("Es existiert keine Buchkopie mit dieser ID: " + id);
-                continue;
-            }
-            if (bookCopies.get(id).isLent()) {
-                System.out.println("Die Buchkopie mit ID: " + id
-                        + " ist verliehen und kann nicht gelöscht werden.");
-                continue;
-            }
-
-            System.out.println("Die Buchkopie mit ID: " + id + " wird gelöscht.");
-            System.out.println("1. Bestätigen");
-            System.out.println("2. Abbrechen");
-            try {
-                choice = scanner.nextInt();
-                scanner.nextLine();
-            } catch (InputMismatchException e) {
-                System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-                scanner.nextLine();
-                continue;
-            }
-
-            switch (choice) {
-                case 1:
-                    bookCopies.remove(id);
-                    System.out.println("Die Buchkopie mit ID: " + id + " wurde gelöscht.");
-                    choice = 2;
-                    break;
-                case 2:
-                    break;
-                default:
-                    System.out.println("Ungültige Option. Bitte erneut wählen.");
-            }
+    public String deletionBlocker(int id) {
+        if (!bookCopies.containsKey(id)) {
+            return "Es existiert keine Buchkopie mit dieser ID: " + id;
         }
+        if (bookCopies.get(id).isLent()) {
+            return "Die Buchkopie mit ID: " + id
+                    + " ist verliehen und kann nicht gelöscht werden.";
+        }
+        return null;
+    }
+
+    /**
+     * Removes a book copy without any checks; use {@link #deletionBlocker}
+     * first.
+     *
+     * @param id the copy ID to remove
+     * @return {@code true} when a copy was removed
+     */
+    public boolean removeBookCopy(int id) {
+        return bookCopies.remove(id) != null;
     }
 
     /**
@@ -204,75 +172,55 @@ public class BookCopyManager {
         }
     }
 
-    /**
-     * Interactively searches for book copies by ISBN, title, or author.
+        /**
+     * Returns every copy of the book with the given ISBN.
      *
-     * @param scanner the scanner used for user input
+     * <p>Pure lookup — the CLI owns the prompt, the menu and the printing.</p>
+     *
+     * @param isbn the ISBN to match exactly
+     * @return the matching copies, empty when none match
      */
-    public void searchBookCopies(Scanner scanner) {
-        System.out.println("==EINE BUCHKOPIE SUCHEN==");
-        System.out.println("1. ISBN");
-        System.out.println("2. Buchtitel");
-        System.out.println("3. Autor");
-        System.out.println("4. Zurück zum Hauptmenü");
-        int choice;
-        try {
-            choice = scanner.nextInt();
-            scanner.nextLine();
-        } catch (InputMismatchException e) {
-            System.out.println("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
-            scanner.nextLine();
-            return;
+    public List<BookCopy> findByIsbn(String isbn) {
+        List<BookCopy> found = new ArrayList<>();
+        for (BookCopy bookCopy : bookCopies.values()) {
+            if (bookCopy.getBook() != null && bookCopy.getBook().getIsbn().equals(isbn)) {
+                found.add(bookCopy);
+            }
         }
-        List<BookCopy> foundBookCopies = new ArrayList<>();
-        switch (choice) {
-            case -1:
-                break;
-            case 1:
-                System.out.println("Bitte geben Sie die ISBN der Buchkopie ein:");
-                String isbn = scanner.nextLine();
-                for (BookCopy bookCopy : bookCopies.values()) {
-                    if (bookCopy.getBook() != null && bookCopy.getBook().getIsbn().equals(isbn)) {
-                        foundBookCopies.add(bookCopy);
-                    }
-                }
-                if (foundBookCopies.isEmpty()) {
-                    System.out.println("Es existiert keine Buchkopie mit dieser ISBN: " + isbn);
-                }
-                break;
-            case 2:
-                System.out.println("Bitte geben Sie den Buchtitel der Buchkopie ein:");
-                String title = scanner.nextLine();
-                for (BookCopy bookCopy : bookCopies.values()) {
-                    if (bookCopy.getBook() != null
-                            && bookCopy.getBook().getTitle().equalsIgnoreCase(title)) {
-                        foundBookCopies.add(bookCopy);
-                    }
-                }
-                if (foundBookCopies.isEmpty()) {
-                    System.out.println("Es existiert keine Buchkopie mit diesem Buchtitel: " + title);
-                }
-                break;
-            case 3:
-                System.out.println("Bitte geben Sie den Autor der Buchkopie ein (oder -1 zum Abbrechen):");
-                String author = scanner.nextLine();
-                for (BookCopy bookCopy : bookCopies.values()) {
-                    if (bookCopy.getBook() != null
-                            && bookCopy.getBook().getAuthors().contains(author)) {
-                        foundBookCopies.add(bookCopy);
-                    }
-                }
-                if (foundBookCopies.isEmpty()) {
-                    System.out.println("Es existiert keine Buchkopie mit diesem Autor: " + author);
-                }
-                break;
-            case 4:
-                break;
-            default:
-                System.out.println("Ungültige Option. Zurück zum Hauptmenu.");
+        return found;
+    }
+
+    /**
+     * Returns every copy whose book title matches, ignoring case.
+     *
+     * @param title the title to match
+     * @return the matching copies, empty when none match
+     */
+    public List<BookCopy> findByTitle(String title) {
+        List<BookCopy> found = new ArrayList<>();
+        for (BookCopy bookCopy : bookCopies.values()) {
+            if (bookCopy.getBook() != null
+                    && bookCopy.getBook().getTitle().equalsIgnoreCase(title)) {
+                found.add(bookCopy);
+            }
         }
-        for (BookCopy bookCopy : foundBookCopies) {
-            System.out.println(bookCopy.toString());
+        return found;
+    }
+
+    /**
+     * Returns every copy whose book lists the given author.
+     *
+     * @param author the author to match exactly
+     * @return the matching copies, empty when none match
+     */
+    public List<BookCopy> findByAuthor(String author) {
+        List<BookCopy> found = new ArrayList<>();
+        for (BookCopy bookCopy : bookCopies.values()) {
+            if (bookCopy.getBook() != null
+                    && bookCopy.getBook().getAuthors().contains(author)) {
+                found.add(bookCopy);
+            }
         }
+        return found;
     }
 }
