@@ -15,6 +15,14 @@ and generating various reports.
 reservations) replays in the browser on the
 [uni-old-projects site](https://daniilperkin-uni.github.io/uni-old-projects/#pe2_library_cli).
 
+## Screenshots
+
+Real sessions against the packaged jar, running on the bundled fixtures:
+
+| Loan | Return with late fee |
+| --- | --- |
+| ![Loan of book copy 1 to customer 123, then back to the main menu](docs/screenshots/cli-loan.webp) | ![Return of an overdue copy with the calculated late fee](docs/screenshots/cli-return.webp) |
+
 Features:
 
 - Creating books, book copies and customers directly in the menus
