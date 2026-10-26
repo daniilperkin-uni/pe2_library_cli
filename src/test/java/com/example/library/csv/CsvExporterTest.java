@@ -9,7 +9,11 @@ import com.example.library.service.LoanService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,17 +61,46 @@ class CsvExporterTest {
         customers.importCustomers("/benutzer.csv");
         copies.importBookCopies("/buchkopien.csv", books, customers);
         ReservationManager reservations = new ReservationManager();
-        Reservation first = reservations.reserve("isbn-7", 2);
-        Reservation second = reservations.reserve("isbn-7", 3);
+        Reservation first = reservations.reserve("3036959548", 2);
+        Reservation second = reservations.reserve("3036959548", 123);
 
         CsvExporter.save(dir, books, customers, copies, reservations);
 
+        // Beim Laden müssen Buch und Kunde der Vormerkung existieren, sonst
+        // lehnt der Import die Zeile ab.
+        BookManager restoredBooks = new BookManager();
+        CustomerManager restoredCustomers = new CustomerManager();
+        restoredBooks.importBooks("/bücher.csv");
+        restoredCustomers.importCustomers("/benutzer.csv");
         ReservationManager restored = new ReservationManager();
-        restored.importReservations(dir.resolve(CsvExporter.RESERVATIONS_FILE).toString());
+        restored.importReservations(dir.resolve(CsvExporter.RESERVATIONS_FILE).toString(),
+                restoredBooks, restoredCustomers);
 
         assertThat(restored.all()).containsExactly(first, second);
         // restored ids must not be handed out again for a new reservation
-        assertThat(restored.reserve("isbn-7", 4).id()).isEqualTo(3);
+        assertThat(restored.reserve("3036959548", 4).id()).isEqualTo(3);
+    }
+
+    @Test
+    void saveReplacesEveryFileAndLeavesNoTemporaryFiles(@TempDir Path dir) throws Exception {
+        BookManager books = new BookManager();
+        CustomerManager customers = new CustomerManager();
+        BookCopyManager copies = new BookCopyManager();
+        books.importBooks("/bücher.csv");
+        customers.importCustomers("/benutzer.csv");
+        copies.importBookCopies("/buchkopien.csv", books, customers);
+
+        CsvExporter.save(dir, books, customers, copies, new ReservationManager());
+
+        List<String> names;
+        try (Stream<Path> files = Files.list(dir)) {
+            names = files.map(path -> path.getFileName().toString()).toList();
+        }
+        assertThat(names).contains(CsvExporter.BOOKS_FILE, CsvExporter.CUSTOMERS_FILE,
+                CsvExporter.COPIES_FILE, CsvExporter.RESERVATIONS_FILE);
+        assertThat(names).noneMatch(name -> name.endsWith(".tmp"));
+        assertThat(Files.readAllLines(dir.resolve(CsvExporter.BOOKS_FILE),
+                StandardCharsets.UTF_8)).hasSize(4);
     }
 
     @Test

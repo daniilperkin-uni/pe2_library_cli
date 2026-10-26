@@ -3,11 +3,12 @@ package com.example.library.manager;
 import com.example.library.model.BookCopy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -117,6 +118,18 @@ class BookCopyManagerTest {
     }
 
     @Test
+    void addBookCopy_does_not_recycle_the_id_of_a_deleted_copy() {
+        assertThat(bookCopyManager.removeBookCopy(2)).isTrue();
+
+        BookCopy copy = bookCopyManager.addBookCopy("3551551677", "REGAL7", bookManager);
+
+        // Eine freigewordene ID darf nicht neu vergeben werden, sonst erbt die
+        // neue Kopie die Verweise der gelöschten.
+        assertThat(copy.getId()).isEqualTo(3);
+        assertThat(bookCopyManager.getBookCopy(2)).isNull();
+    }
+
+    @Test
     void addBookCopy_rejects_unknown_isbn() {
         assertThatThrownBy(() -> bookCopyManager.addBookCopy("0000000000", "REGAL7", bookManager))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -130,5 +143,47 @@ class BookCopyManagerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Standort darf nicht leer");
         assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
+
+    @Test
+    void importBookCopies_rejects_an_unknown_isbn(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("buchkopien.csv");
+        Files.writeString(csv, "id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID\n"
+                + "7,0000000000,SF1,2024-01-01,no,,\n", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> bookCopyManager.importBookCopies(csv.toString(), bookManager,
+                customerManager))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Es existiert kein Buch mit ISBN 0000000000")
+                .hasMessageContaining("Zeile 2");
+        // Keine unsichtbare Waise im Bestand.
+        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
+
+    @Test
+    void importBookCopies_reports_a_truncated_row(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("buchkopien.csv");
+        Files.writeString(csv, "id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID\n"
+                + "7,3036959548,SF1\n", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> bookCopyManager.importBookCopies(csv.toString(), bookManager,
+                customerManager))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(csv.toString())
+                .hasMessageContaining("Zeile 2")
+                .hasMessageContaining("erwartet mindestens 5 Spalten, gefunden 3");
+    }
+
+    @Test
+    void importBookCopies_reports_a_lent_row_without_loan_columns(@TempDir Path dir)
+            throws IOException {
+        Path csv = dir.resolve("buchkopien.csv");
+        Files.writeString(csv, "id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID\n"
+                + "7,3036959548,SF1,2024-01-01,yes\n", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> bookCopyManager.importBookCopies(csv.toString(), bookManager,
+                customerManager))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("erwartet mindestens 7 Spalten, gefunden 5");
     }
 }

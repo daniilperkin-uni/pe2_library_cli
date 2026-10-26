@@ -160,6 +160,26 @@ class LibraryCLITest {
     }
 
     @Test
+    void deleteCustomerViaSubmenuRefusesACustomerWhoIsStillQueued() {
+        // 7 -> Vormerkungen, 1 -> vormerken (ISBN 3551551677, Kunde 123),
+        // 1 -> zurück, 4 -> Hauptmenü, 3 -> Kunden, 2 -> löschen,
+        // 123 -> wird abgelehnt, -1 -> abbrechen, 9 -> Ende
+        String output = run("7\n1\n3551551677\n123\n1\n4\n3\n2\n123\n-1\n9\n");
+
+        assertThat(output).contains("Vormerkung 1 für ISBN 3551551677 von Kunde 123 angelegt.");
+        assertThat(output).contains("steht noch in der Vormerkungs-Warteschlange");
+        assertThat(output).doesNotContain("Der Kunde mit ID: 123 wurde gelöscht.");
+    }
+
+    @Test
+    void deleteBookViaSubmenuRefusesABookThatIsStillReserved() {
+        String output = run("7\n1\n3551551677\n123\n1\n4\n1\n2\n3551551677\n-1\n9\n");
+
+        assertThat(output).contains("hat noch offene Vormerkungen in der Warteschlange");
+        assertThat(output).doesNotContain("Das Buch mit ISBN: 3551551677 wurde gelöscht.");
+    }
+
+    @Test
     void searchViaSubmenuPrintsTheMatchingCopies() {
         String output = run("6\n1\n3036959548\n9\n");
         assertThat(output).contains("==EINE BUCHKOPIE SUCHEN==");

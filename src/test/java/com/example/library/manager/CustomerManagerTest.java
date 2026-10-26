@@ -4,13 +4,14 @@ import com.example.library.model.BookCopy;
 import com.example.library.model.Customer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Date;
-import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,12 +67,12 @@ class CustomerManagerTest {
 
     @Test
     void deletionBlocker_allows_a_customer_without_loans() {
-        assertThat(customerManager.deletionBlocker(2)).isNull();
+        assertThat(customerManager.deletionBlocker(2, new ReservationManager())).isNull();
     }
 
     @Test
     void deletionBlocker_reports_an_unknown_id() {
-        assertThat(customerManager.deletionBlocker(999))
+        assertThat(customerManager.deletionBlocker(999, new ReservationManager()))
                 .contains("Es existiert kein Kunde mit dieser ID: 999");
     }
 
@@ -80,9 +81,22 @@ class CustomerManagerTest {
         customerManager.getCustomer(2).addBookCopy(
                 new BookCopy(99, null, "A1", new Date(), true, LocalDate.now(), 2));
 
-        assertThat(customerManager.deletionBlocker(2))
+        assertThat(customerManager.deletionBlocker(2, new ReservationManager()))
                 .contains("hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.");
         assertThat(customerManager.exists(2)).isTrue();
+    }
+
+    @Test
+    void deletionBlocker_refuses_a_customer_who_is_still_queued() {
+        ReservationManager reservationManager = new ReservationManager();
+        reservationManager.reserve("3551551677", 123);
+
+        assertThat(customerManager.deletionBlocker(123, reservationManager))
+                .contains("steht noch in der Vormerkungs-Warteschlange")
+                .contains("kann nicht gelöscht werden.");
+        // Ein Kunde ohne Vormerkung bleibt löschbar.
+        assertThat(customerManager.deletionBlocker(2, reservationManager)).isNull();
+        assertThat(customerManager.exists(123)).isTrue();
     }
 
     @Test
@@ -99,6 +113,19 @@ class CustomerManagerTest {
     }
 
     @Test
+    void addCustomer_does_not_recycle_the_id_of_a_deleted_customer() {
+        assertThat(customerManager.removeCustomer(123)).isTrue();
+
+        Customer customer = customerManager.addCustomer("Neu", "Nina",
+                "Neustraße 1", "11111", "Musterstadt");
+
+        // Eine freigewordene ID darf nicht neu vergeben werden, sonst erbt der
+        // neue Kunde die Vormerkungen des gelöschten.
+        assertThat(customer.getId()).isEqualTo(124);
+        assertThat(customerManager.getCustomer(123)).isNull();
+    }
+
+    @Test
     void addCustomer_rejects_blank_names() {
         assertThatThrownBy(() -> customerManager.addCustomer("  ", "Berta",
                 "Beispielweg 7", "54321", "Musterstadt"))
@@ -108,5 +135,20 @@ class CustomerManagerTest {
                 "Beispielweg 7", "54321", "Musterstadt"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Vorname darf nicht leer");
+    }
+
+    @Test
+    void importCustomers_reports_a_truncated_row_with_file_and_line(@TempDir Path dir)
+            throws IOException {
+        Path csv = dir.resolve("benutzer.csv");
+        Files.writeString(csv, "id,name,firstName,address,zipCode,city,feesPayed\n"
+                + "7,Beispiel,Berta,Beispielweg 7,54321\n", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> customerManager.importCustomers(csv.toString()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(csv.toString())
+                .hasMessageContaining("Zeile 2")
+                .hasMessageContaining("erwartet mindestens 7 Spalten, gefunden 5");
+        assertThat(customerManager.getCustomers()).hasSize(2);
     }
 }

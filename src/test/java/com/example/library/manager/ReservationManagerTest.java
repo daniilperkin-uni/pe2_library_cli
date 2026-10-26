@@ -3,7 +3,12 @@ package com.example.library.manager;
 import com.example.library.model.Reservation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,5 +83,101 @@ class ReservationManagerTest {
     void freshManagerEmpty() {
         ReservationManager manager = new ReservationManager();
         assertTrue(manager.all().isEmpty());
+    }
+
+    @Test
+    @DisplayName("The same customer cannot queue twice for the same title")
+    void duplicateReservationRejected() {
+        ReservationManager manager = new ReservationManager();
+        manager.reserve("isbn-7", 100);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve("isbn-7", 100));
+
+        assertTrue(error.getMessage().contains("hat bereits eine Vormerkung für ISBN isbn-7"));
+        assertEquals(1, manager.queueSize("isbn-7"));
+    }
+
+    @Test
+    @DisplayName("A customer may queue for two different titles")
+    void sameCustomerTwoTitles() {
+        ReservationManager manager = new ReservationManager();
+        manager.reserve("isbn-1", 100);
+        manager.reserve("isbn-2", 100);
+        assertEquals(2, manager.all().size());
+    }
+
+    @Test
+    @DisplayName("Import rejects a reservation for an unknown customer")
+    void importRejectsUnknownCustomer(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("reservations.csv");
+        Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
+                + "1,3036959548,999,2024-01-01\n", StandardCharsets.UTF_8);
+
+        ReservationManager manager = new ReservationManager();
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.importReservations(csv.toString(), books(), customers()));
+
+        assertTrue(error.getMessage().contains("Es existiert kein Kunde mit ID 999"));
+        assertTrue(error.getMessage().contains("Zeile 2"));
+        assertTrue(manager.all().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Import rejects a reservation for an unknown ISBN")
+    void importRejectsUnknownBook(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("reservations.csv");
+        Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
+                + "1,0000000000,2,2024-01-01\n", StandardCharsets.UTF_8);
+
+        ReservationManager manager = new ReservationManager();
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.importReservations(csv.toString(), books(), customers()));
+
+        assertTrue(error.getMessage().contains("Es existiert kein Buch mit ISBN 0000000000"));
+        assertTrue(manager.all().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Import reports a truncated row with file and line")
+    void importRejectsTruncatedRow(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("reservations.csv");
+        Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
+                + "1,3036959548\n", StandardCharsets.UTF_8);
+
+        ReservationManager manager = new ReservationManager();
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.importReservations(csv.toString(), books(), customers()));
+
+        assertTrue(error.getMessage().contains(csv.toString()));
+        assertTrue(error.getMessage().contains("Zeile 2"));
+        assertTrue(error.getMessage().contains("erwartet mindestens 4 Spalten, gefunden 2"));
+    }
+
+    @Test
+    @DisplayName("Import accepts rows whose book and customer exist")
+    void importAcceptsKnownReferences(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("reservations.csv");
+        Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
+                + "5,3036959548,2,2024-05-01\n", StandardCharsets.UTF_8);
+
+        ReservationManager manager = new ReservationManager();
+        manager.importReservations(csv.toString(), books(), customers());
+
+        assertEquals(1, manager.queueSize("3036959548"));
+        // nextId bleibt hinter der importierten ID zurück.
+        assertEquals(6, manager.reserve("3036959548", 123).id());
+    }
+
+    private static BookManager books() {
+        BookManager books = new BookManager();
+        books.importBooks("/bücher.csv");
+        return books;
+    }
+
+    private static CustomerManager customers() {
+        CustomerManager customers = new CustomerManager();
+        customers.importCustomers("/benutzer.csv");
+        return customers;
     }
 }

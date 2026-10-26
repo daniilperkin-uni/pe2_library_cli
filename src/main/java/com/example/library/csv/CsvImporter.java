@@ -18,9 +18,43 @@ import java.util.List;
 public final class CsvImporter {
 
     /**
+     * One parsed CSV row together with the physical line it came from.
+     *
+     * <p>Importers use the line number to report a broken record precisely
+     * instead of failing with an anonymous parse error.</p>
+     *
+     * @param lineNumber 1-based line number in the source
+     * @param fields     the parsed field values
+     */
+    public record Row(int lineNumber, String[] fields) {
+    }
+
+    /**
      * This utility class cannot be instantiated.
      */
     private CsvImporter() {
+    }
+
+    /**
+     * Checks that a row carries at least the expected number of columns.
+     *
+     * <p>Without this guard a truncated record (for example after a killed
+     * write) would blow up later with a bare
+     * {@link ArrayIndexOutOfBoundsException}, and the application could not
+     * even say which file broke. The message names the source and line.</p>
+     *
+     * @param row      the row to check
+     * @param source   the file path or classpath resource being imported
+     * @param expected minimum number of columns
+     * @throws IllegalArgumentException when the row has too few columns
+     */
+    public static void requireColumns(Row row, String source, int expected) {
+        int found = row.fields().length;
+        if (found < expected) {
+            throw new IllegalArgumentException("Ungültiger Datensatz in " + source
+                    + ", Zeile " + row.lineNumber() + ": erwartet mindestens " + expected
+                    + " Spalten, gefunden " + found + ".");
+        }
     }
 
     /**
@@ -54,15 +88,37 @@ public final class CsvImporter {
      * @throws IllegalArgumentException if {@code input} is {@code null}
      */
     public static List<String[]> parse(InputStream input, boolean hasHeader) throws IOException {
+        List<String[]> rows = new ArrayList<>();
+        for (Row row : parseRows(input, hasHeader)) {
+            rows.add(row.fields());
+        }
+        return rows;
+    }
+
+    /**
+     * Parses a CSV stream into rows that remember their physical line number.
+     *
+     * <p>Blank lines and the header are skipped, but the numbering still
+     * follows the file, so a reported line can be found in an editor.</p>
+     *
+     * @param input     the input stream to read from (UTF-8 encoded)
+     * @param hasHeader if {@code true}, the first non-empty line is skipped
+     * @return a list of parsed rows with their line numbers
+     * @throws IOException              if an I/O error occurs or a quoted field is not properly closed
+     * @throws IllegalArgumentException if {@code input} is {@code null}
+     */
+    public static List<Row> parseRows(InputStream input, boolean hasHeader) throws IOException {
         if (input == null) {
             throw new IllegalArgumentException("Input stream must not be null");
         }
-        List<String[]> rows = new ArrayList<>();
+        List<Row> rows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
+            int lineNumber = 0;
             boolean firstLine = true;
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 if (line.isEmpty()) {
                     continue;
                 }
@@ -71,7 +127,7 @@ public final class CsvImporter {
                     continue;
                 }
                 firstLine = false;
-                rows.add(parseLine(line));
+                rows.add(new Row(lineNumber, parseLine(line)));
             }
         }
         return rows;

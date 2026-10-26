@@ -80,6 +80,55 @@ class LibraryCLIStateLoadTest {
     }
 
     @Test
+    void loadState_throws_whenSavedReservationReferencesMissingCustomer(@TempDir Path dir)
+            throws IOException {
+        BookManager books = new BookManager();
+        CustomerManager customers = new CustomerManager();
+        BookCopyManager copies = new BookCopyManager();
+        books.importBooks("/bücher.csv");
+        customers.importCustomers("/benutzer.csv");
+        copies.importBookCopies("/buchkopien.csv", books, customers);
+        CsvExporter.save(dir, books, customers, copies, new ReservationManager());
+
+        // Eine Vormerkung auf einen nicht mehr vorhandenen Kunden: früher
+        // wurde die Zeile beim Start still wieder eingelesen.
+        Files.writeString(dir.resolve(CsvExporter.RESERVATIONS_FILE),
+                "id,bookIsbn,customerId,createdAt\n"
+                        + "1,3036959548,999,2024-01-01\n", StandardCharsets.UTF_8);
+
+        BookManager books2 = new BookManager();
+        CustomerManager customers2 = new CustomerManager();
+        BookCopyManager copies2 = new BookCopyManager();
+
+        assertThatThrownBy(() -> LibraryCLI.loadState(dir, books2, customers2, copies2,
+                new ReservationManager()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Es existiert kein Kunde mit ID 999");
+    }
+
+    @Test
+    void loadState_restores_theReservationQueue(@TempDir Path dir) throws IOException {
+        BookManager books = new BookManager();
+        CustomerManager customers = new CustomerManager();
+        BookCopyManager copies = new BookCopyManager();
+        books.importBooks("/bücher.csv");
+        customers.importCustomers("/benutzer.csv");
+        copies.importBookCopies("/buchkopien.csv", books, customers);
+        ReservationManager reservations = new ReservationManager();
+        reservations.reserve("3036959548", 2);
+        reservations.reserve("3036959548", 123);
+        CsvExporter.save(dir, books, customers, copies, reservations);
+
+        ReservationManager reservations2 = new ReservationManager();
+        LibraryCLI.loadState(dir, new BookManager(), new CustomerManager(),
+                new BookCopyManager(), reservations2);
+
+        assertThat(reservations2.queueSize("3036959548")).isEqualTo(2);
+        assertThat(reservations2.all()).extracting(r -> r.customerId())
+                .containsExactly(2, 123);
+    }
+
+    @Test
     void loadState_restores_added_book_and_copy(@TempDir Path dir) throws IOException {
         BookManager books = new BookManager();
         CustomerManager customers = new CustomerManager();

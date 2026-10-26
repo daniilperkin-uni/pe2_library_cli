@@ -11,8 +11,10 @@ import com.example.library.model.Reservation;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -87,8 +89,42 @@ public final class CsvExporter {
         write(dir.resolve(RESERVATIONS_FILE), lines);
     }
 
+    /**
+     * Writes one CSV file atomically.
+     *
+     * <p>Erst in eine Nachbardatei mit der Endung {@code .tmp} schreiben, dann
+     * umbenennen: Ein Abbruch, eine volle Platte oder eine OneDrive-Sperre
+     * lässt so höchstens die temporäre Datei halbfertig zurück, nie die
+     * eigentliche CSV. Ein abgeschnittener Datensatz würde beim nächsten Start
+     * den Import verderben.</p>
+     *
+     * <p>Kann das Dateisystem nicht atomar umbenennen (Netz- und
+     * Cloud-Laufwerke), wird auf ein normales {@code move} mit
+     * {@code REPLACE_EXISTING} zurückgefallen.</p>
+     *
+     * @param file  the target file
+     * @param lines the lines to write
+     * @throws IOException if writing or moving fails
+     */
     private static void write(Path file, List<String> lines) throws IOException {
-        Files.write(file, lines, StandardCharsets.UTF_8);
+        Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+        try {
+            Files.write(tmp, lines, StandardCharsets.UTF_8);
+            try {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            // Nach einem erfolgreichen Move existiert die Datei nicht mehr;
+            // nach einem Fehler bleibt keine halbe Datei im Datenverzeichnis.
+            try {
+                Files.deleteIfExists(tmp);
+            } catch (IOException ignored) {
+                // Aufräumen darf den eigentlichen Schreibfehler nicht verdecken.
+            }
+        }
     }
 
     /** Quotes a field when it contains a comma, quote or leading/trailing space. */

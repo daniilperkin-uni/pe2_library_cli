@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,14 +55,16 @@ public class BookManager {
      *
      * <p>Pure check: the CLI asks for the ISBN, prints the reason and only then
      * calls {@link #removeBook(String)}. It stays in the manager because it
-     * needs the book map and the copies that reference it — but it no longer
-     * reads from {@code System.in}.</p>
+     * needs the book map, the copies that reference it and the reservation
+     * queue — but it no longer reads from {@code System.in}.</p>
      *
-     * @param isbn            the ISBN to check
-     * @param bookCopyManager the manager holding the copies
+     * @param isbn               the ISBN to check
+     * @param bookCopyManager    the manager holding the copies
+     * @param reservationManager the manager holding the waiting list
      * @return a German reason, or {@code null} when deletion is allowed
      */
-    public String deletionBlocker(String isbn, BookCopyManager bookCopyManager) {
+    public String deletionBlocker(String isbn, BookCopyManager bookCopyManager,
+                                  ReservationManager reservationManager) {
         if (!books.containsKey(isbn)) {
             return "Es existiert kein Buch mit dieser ID: " + isbn;
         }
@@ -72,6 +73,14 @@ public class BookManager {
                 return "Das Buch mit ISBN: " + isbn
                         + " hat noch Buchkopien und kann nicht gelöscht werden.";
             }
+        }
+        if (reservationManager.hasReservationForBook(isbn)) {
+            // Sonst bliebe eine Vormerkung auf einen nicht mehr vorhandenen
+            // Titel zurück; sie würde beim nächsten Start still wieder
+            // eingelesen und die Warteschlange verfälschen.
+            return "Das Buch mit ISBN: " + isbn
+                    + " hat noch offene Vormerkungen in der Warteschlange"
+                    + " und kann nicht gelöscht werden.";
         }
         return null;
     }
@@ -135,6 +144,7 @@ public class BookManager {
      * (semicolon-separated), year, city, publisher, edition.</p>
      *
      * @param resourcePath the classpath resource path (e.g. {@code "/bücher.csv"})
+     * @throws IllegalArgumentException if a row has too few columns
      */
     public void importBooks(String resourcePath) {
         InputStream input = CsvImporter.open(getClass(), resourcePath);
@@ -143,8 +153,13 @@ public class BookManager {
             return;
         }
         try {
-            List<String[]> rows = CsvImporter.parse(input, true);
-            for (String[] parts : rows) {
+            List<CsvImporter.Row> rows = CsvImporter.parseRows(input, true);
+            for (CsvImporter.Row row : rows) {
+                // Ein abgeschnittener Datensatz darf nicht als rohe
+                // ArrayIndexOutOfBoundsException enden: sonst verweigert der
+                // nächste Start das Laden, ohne die kaputte Zeile zu nennen.
+                CsvImporter.requireColumns(row, resourcePath, 7);
+                String[] parts = row.fields();
                 String isbn = parts[0].trim();
                 String title = parts[1].trim();
                 List<String> authors = Arrays.asList(parts[2].trim().split(";"));

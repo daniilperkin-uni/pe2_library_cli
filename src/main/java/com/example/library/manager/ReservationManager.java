@@ -29,11 +29,16 @@ public class ReservationManager {
     /**
      * Adds a reservation to the end of the queue.
      *
+     * <p>A customer can wait for a title only once: a second active
+     * reservation for the same pair would occupy two places in the FIFO queue
+     * and hand the same person the title twice.</p>
+     *
      * @param bookIsbn   the ISBN of the requested book
      * @param customerId the id of the waiting customer
      * @return the created reservation
-     * @throws IllegalArgumentException when the ISBN is blank or the customer
-     *                                  id is not positive
+     * @throws IllegalArgumentException when the ISBN is blank, the customer
+     *                                  id is not positive, or the pair is
+     *                                  already queued
      */
     public Reservation reserve(String bookIsbn, int customerId) {
         if (bookIsbn == null || bookIsbn.isBlank()) {
@@ -42,9 +47,51 @@ public class ReservationManager {
         if (customerId <= 0) {
             throw new IllegalArgumentException("Kunden-ID muss positiv sein: " + customerId);
         }
+        if (hasReservation(bookIsbn, customerId)) {
+            throw new IllegalArgumentException("Der Kunde mit ID " + customerId
+                    + " hat bereits eine Vormerkung für ISBN " + bookIsbn + ".");
+        }
         Reservation r = Reservation.now(nextId++, bookIsbn, customerId);
         reservations.add(r);
         return r;
+    }
+
+    /**
+     * Checks whether a customer already waits for this exact title.
+     *
+     * @param bookIsbn   the requested book ISBN
+     * @param customerId the waiting customer id
+     * @return {@code true} when an active reservation for the pair exists
+     */
+    private boolean hasReservation(String bookIsbn, int customerId) {
+        return reservations.stream()
+                .anyMatch(r -> r.bookIsbn().equals(bookIsbn) && r.customerId() == customerId);
+    }
+
+    /**
+     * Checks whether any customer waits for the given title.
+     *
+     * <p>Used by the deletion checks so a book cannot be removed while its
+     * queue entry would dangle.</p>
+     *
+     * @param bookIsbn the requested book ISBN
+     * @return {@code true} when at least one reservation references the ISBN
+     */
+    public boolean hasReservationForBook(String bookIsbn) {
+        return reservations.stream().anyMatch(r -> r.bookIsbn().equals(bookIsbn));
+    }
+
+    /**
+     * Checks whether the given customer waits for any title.
+     *
+     * <p>Used by the deletion checks so a customer cannot be removed while a
+     * queue entry still points at them.</p>
+     *
+     * @param customerId the customer id
+     * @return {@code true} when at least one reservation references the id
+     */
+    public boolean hasReservationForCustomer(int customerId) {
+        return reservations.stream().anyMatch(r -> r.customerId() == customerId);
     }
 
     /**
@@ -106,22 +153,43 @@ public class ReservationManager {
      * largest one, so reservations created afterwards never collide with a
      * restored entry.</p>
      *
-     * @param resourcePath the file path or classpath resource path
-     * @throws RuntimeException if the CSV cannot be read or parsed
+     * <p>Every row is checked against the book and customer collections: a
+     * queue entry whose ISBN or customer no longer exists would otherwise be
+     * reloaded silently as a dangling row.</p>
+     *
+     * @param resourcePath    the file path or classpath resource path
+     * @param bookManager     the manager used to verify the ISBNs
+     * @param customerManager the manager used to verify the customer ids
+     * @throws RuntimeException         if the CSV cannot be read or parsed
+     * @throws IllegalArgumentException if a row references an unknown book or
+     *                                  customer, or has too few columns
      */
-    public void importReservations(String resourcePath) {
+    public void importReservations(String resourcePath, BookManager bookManager,
+                                   CustomerManager customerManager) {
         InputStream input = CsvImporter.open(getClass(), resourcePath);
         if (input == null) {
             System.out.println("Datei existiert nicht: " + resourcePath);
             return;
         }
         try {
-            List<String[]> rows = CsvImporter.parse(input, true);
-            for (String[] parts : rows) {
+            List<CsvImporter.Row> rows = CsvImporter.parseRows(input, true);
+            for (CsvImporter.Row row : rows) {
+                CsvImporter.requireColumns(row, resourcePath, 4);
+                String[] parts = row.fields();
                 long id = Long.parseLong(parts[0].trim());
                 String bookIsbn = parts[1].trim();
                 int customerId = Integer.parseInt(parts[2].trim());
                 LocalDate createdAt = LocalDate.parse(parts[3].trim());
+                if (!bookManager.exists(bookIsbn)) {
+                    throw new IllegalArgumentException("Es existiert kein Buch mit ISBN "
+                            + bookIsbn + " (Vormerkung " + id + " in " + resourcePath
+                            + ", Zeile " + row.lineNumber() + ")");
+                }
+                if (!customerManager.exists(customerId)) {
+                    throw new IllegalArgumentException("Es existiert kein Kunde mit ID "
+                            + customerId + " (Vormerkung " + id + " in " + resourcePath
+                            + ", Zeile " + row.lineNumber() + ")");
+                }
                 reservations.add(new Reservation(id, bookIsbn, customerId, createdAt));
                 nextId = Math.max(nextId, id + 1);
             }

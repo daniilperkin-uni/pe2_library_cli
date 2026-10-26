@@ -3,12 +3,13 @@ package com.example.library.manager;
 import com.example.library.model.Book;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -77,12 +78,14 @@ class BookManagerTest {
 
     @Test
     void deletionBlocker_allows_a_book_without_copies() {
-        assertThat(bookManager.deletionBlocker("3551551677", new BookCopyManager())).isNull();
+        assertThat(bookManager.deletionBlocker("3551551677", new BookCopyManager(),
+                new ReservationManager())).isNull();
     }
 
     @Test
     void deletionBlocker_reports_an_unknown_isbn() {
-        assertThat(bookManager.deletionBlocker("nope", new BookCopyManager()))
+        assertThat(bookManager.deletionBlocker("nope", new BookCopyManager(),
+                new ReservationManager()))
                 .contains("Es existiert kein Buch mit dieser ID: nope");
     }
 
@@ -93,10 +96,26 @@ class BookManagerTest {
         BookCopyManager bookCopyManager = new BookCopyManager();
         bookCopyManager.importBookCopies("/buchkopien.csv", bookManager, customerManager);
 
-        assertThat(bookManager.deletionBlocker("3036959548", bookCopyManager))
+        assertThat(bookManager.deletionBlocker("3036959548", bookCopyManager,
+                new ReservationManager()))
                 .contains("hat noch Buchkopien und kann nicht gelöscht werden.");
         assertThat(bookManager.exists("3036959548")).isTrue();
         assertThat(bookManager.getBooks()).hasSize(3);
+    }
+
+    @Test
+    void deletionBlocker_refuses_a_book_that_is_still_reserved() {
+        ReservationManager reservationManager = new ReservationManager();
+        reservationManager.reserve("3551551677", 123);
+
+        // Das Buch hat keine Kopien, wird aber noch vorgemerkt.
+        assertThat(bookManager.deletionBlocker("3551551677", new BookCopyManager(),
+                reservationManager))
+                .contains("hat noch offene Vormerkungen in der Warteschlange")
+                .contains("kann nicht gelöscht werden.");
+        assertThat(bookManager.deletionBlocker("3608987010", new BookCopyManager(),
+                reservationManager)).isNull();
+        assertThat(bookManager.exists("3551551677")).isTrue();
     }
 
     @Test
@@ -131,5 +150,22 @@ class BookManagerTest {
                 List.of("Autor"), 2000, "Ort", "Verlag", 1))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Titel darf nicht leer");
+    }
+
+    @Test
+    void importBooks_reports_a_truncated_row_with_file_and_line(@TempDir Path dir)
+            throws IOException {
+        Path csv = dir.resolve("bücher.csv");
+        Files.writeString(csv, "isbn,title,authors,year,city,publisher,edition\n"
+                + "3551551677,Harry Potter,Joanne K. Rowling,1998,Hamburg\n",
+                StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> bookManager.importBooks(csv.toString()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(csv.toString())
+                .hasMessageContaining("Zeile 2")
+                .hasMessageContaining("erwartet mindestens 7 Spalten, gefunden 5");
+        // Die abgebrochene Datei darf keinen halben Bestand hinterlassen.
+        assertThat(bookManager.getBooks()).hasSize(3);
     }
 }

@@ -20,6 +20,14 @@ public class CustomerManager {
     final Map<Integer, Customer> customers = new HashMap<>();
 
     /**
+     * Next customer id to hand out. Monotonic: it only ever grows, so an id
+     * freed by a deletion is never recycled and cannot be inherited by the
+     * next new customer together with a stale reference (e.g. a reservation
+     * that still points at the old holder).
+     */
+    private int nextId = 1;
+
+    /**
      * Returns the internal customer map.
      *
      * @return the map of customer ID to {@link Customer}
@@ -53,19 +61,27 @@ public class CustomerManager {
      *
      * <p>Pure check: the CLI asks for the ID, prints the reason and only then
      * calls {@link #removeCustomer(int)}. It stays in the manager because it
-     * needs the customer map and their loans — but it no longer reads from
-     * {@code System.in}.</p>
+     * needs the customer map, their loans and the reservation queue — but it
+     * no longer reads from {@code System.in}.</p>
      *
-     * @param id the customer ID to check
+     * @param id                 the customer ID to check
+     * @param reservationManager the manager holding the waiting list
      * @return a German reason, or {@code null} when deletion is allowed
      */
-    public String deletionBlocker(int id) {
+    public String deletionBlocker(int id, ReservationManager reservationManager) {
         if (!customers.containsKey(id)) {
             return "Es existiert kein Kunde mit dieser ID: " + id;
         }
         if (!customers.get(id).getBookCopies().isEmpty()) {
             return "Der Kunde mit ID: " + id
                     + " hat noch ausgeliehene Buchkopien und kann nicht gelöscht werden.";
+        }
+        if (reservationManager.hasReservationForCustomer(id)) {
+            // Ohne diese Prüfung bliebe die Vormerkung als Waise zurück, würde
+            // beim nächsten Start still wieder eingelesen und könnte durch die
+            // ID-Vergabe sogar an einen fremden Kunden geraten.
+            return "Der Kunde mit ID: " + id
+                    + " steht noch in der Vormerkungs-Warteschlange und kann nicht gelöscht werden.";
         }
         return null;
     }
@@ -81,8 +97,9 @@ public class CustomerManager {
     }
 
     /**
-     * Creates a new customer. The customer ID is assigned automatically as
-     * the next free number; new customers start without paid fees.
+     * Creates a new customer. The customer ID comes from a monotonically
+     * growing counter, so an id freed by a deletion is never reused; new
+     * customers start without paid fees.
      *
      * <p>Pure validation and storage — the interactive prompting lives in the
      * CLI layer.</p>
@@ -103,10 +120,10 @@ public class CustomerManager {
         if (firstName == null || firstName.trim().isEmpty()) {
             throw new IllegalArgumentException("Der Vorname darf nicht leer sein.");
         }
-        int nextId = customers.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
-        Customer customer = new Customer(nextId, name.trim(), firstName.trim(), address,
+        int id = nextId++;
+        Customer customer = new Customer(id, name.trim(), firstName.trim(), address,
                 zipCode, city, false, new ArrayList<>());
-        customers.put(nextId, customer);
+        customers.put(id, customer);
         return customer;
     }
 
@@ -117,6 +134,7 @@ public class CustomerManager {
      * address, zipCode, city, feesPayed (yes/no).</p>
      *
      * @param resourcePath the classpath resource path
+     * @throws IllegalArgumentException if a row has too few columns
      */
     public void importCustomers(String resourcePath) {
         InputStream input = CsvImporter.open(getClass(), resourcePath);
@@ -125,8 +143,10 @@ public class CustomerManager {
             return;
         }
         try {
-            List<String[]> rows = CsvImporter.parse(input, true);
-            for (String[] parts : rows) {
+            List<CsvImporter.Row> rows = CsvImporter.parseRows(input, true);
+            for (CsvImporter.Row row : rows) {
+                CsvImporter.requireColumns(row, resourcePath, 7);
+                String[] parts = row.fields();
                 int id = Integer.parseInt(parts[0].trim());
                 String name = parts[1].trim();
                 String firstName = parts[2].trim();
@@ -137,6 +157,9 @@ public class CustomerManager {
                 Customer customer = new Customer(id, name, firstName, address, zipCode,
                         city, feesPayed, new ArrayList<>());
                 customers.put(id, customer);
+                // Die nächste neue ID muss hinter der größten importierten
+                // liegen, sonst überschreibt ein neuer Kunde einen eingelesenen.
+                nextId = Math.max(nextId, id + 1);
             }
             System.out.println("Benutzer wurden erfolgreich importiert.");
         } catch (IOException e) {

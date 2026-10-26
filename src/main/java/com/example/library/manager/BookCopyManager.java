@@ -3,7 +3,6 @@ package com.example.library.manager;
 import com.example.library.csv.CsvImporter;
 import com.example.library.model.Book;
 import com.example.library.model.BookCopy;
-import com.example.library.model.Customer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,6 +23,13 @@ import java.util.Map;
 public class BookCopyManager {
 
     final Map<Integer, BookCopy> bookCopies = new HashMap<>();
+
+    /**
+     * Next copy id to hand out. Monotonic like the customer ids: a deleted
+     * copy's id is never recycled, so a stale reference can never be
+     * inherited by a later copy.
+     */
+    private int nextId = 1;
 
     /**
      * Returns the internal book-copy map.
@@ -87,9 +93,10 @@ public class BookCopyManager {
     }
 
     /**
-     * Creates a new copy for an existing book. The copy ID is assigned
-     * automatically as the next free number; new copies start out available
-     * (not lent) and with today's date as the date they were added.
+     * Creates a new copy for an existing book. The copy ID comes from a
+     * monotonically growing counter, so a deleted copy's id is never reused;
+     * new copies start out available (not lent) and with today's date as the
+     * date they were added.
      *
      * <p>Pure validation and storage — the interactive prompting lives in the
      * CLI layer.</p>
@@ -110,10 +117,10 @@ public class BookCopyManager {
         if (shelfLocation == null || shelfLocation.trim().isEmpty()) {
             throw new IllegalArgumentException("Der Standort darf nicht leer sein.");
         }
-        int nextId = bookCopies.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
-        BookCopy bookCopy = new BookCopy(nextId, bookManager.getBook(cleanIsbn),
+        int id = nextId++;
+        BookCopy bookCopy = new BookCopy(id, bookManager.getBook(cleanIsbn),
                 shelfLocation.trim(), new Date(), false, null, -1);
-        bookCopies.put(nextId, bookCopy);
+        bookCopies.put(id, bookCopy);
         return bookCopy;
     }
 
@@ -127,7 +134,9 @@ public class BookCopyManager {
      * @param resourcePath   the classpath resource path
      * @param bookManager    the book manager for resolving ISBNs
      * @param customerManager the customer manager for resolving customer IDs
-     * @throws RuntimeException if parsing fails or a referenced customer does not exist
+     * @throws RuntimeException         if parsing fails
+     * @throws IllegalArgumentException if a row references an unknown book or
+     *                                  customer, or has too few columns
      */
     public void importBookCopies(String resourcePath, BookManager bookManager,
                                  CustomerManager customerManager) {
@@ -137,11 +146,26 @@ public class BookCopyManager {
             return;
         }
         try {
-            List<String[]> rows = CsvImporter.parse(input, true);
+            List<CsvImporter.Row> rows = CsvImporter.parseRows(input, true);
             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-            for (String[] parts : rows) {
+            for (CsvImporter.Row row : rows) {
+                // Fünf Spalten sind immer nötig; ein verliehener Datensatz
+                // braucht zusätzlich Leihdatum und Kunden-ID. Ohne die Prüfung
+                // würde ein abgeschnittener Datensatz mit einer rohen
+                // ArrayIndexOutOfBoundsException enden.
+                CsvImporter.requireColumns(row, resourcePath, 5);
+                String[] parts = row.fields();
                 int id = Integer.parseInt(parts[0].trim());
-                Book book = bookManager.getBook(parts[1].trim());
+                String isbn = parts[1].trim();
+                Book book = bookManager.getBook(isbn);
+                if (book == null) {
+                    // Sonst entstünde eine unsichtbare Waise, die in keinem
+                    // Suchlauf auftaucht, aber die Berichtsprozente verzerrt.
+                    throw new IllegalArgumentException(
+                            "Es existiert kein Buch mit ISBN " + isbn
+                                    + " (Buchkopie " + id + " in " + resourcePath
+                                    + ", Zeile " + row.lineNumber() + ")");
+                }
                 String shelfLocation = parts[2].trim();
                 Date addedToLibrary = formatter.parse(parts[3].trim());
                 boolean lent = parts[4].trim().equalsIgnoreCase("yes");
@@ -149,6 +173,7 @@ public class BookCopyManager {
                 int customerID = -1;
 
                 if (lent) {
+                    CsvImporter.requireColumns(row, resourcePath, 7);
                     loanDate = LocalDate.parse(parts[5].trim());
                     customerID = Integer.parseInt(parts[6].trim());
                     if (!customerManager.exists(customerID)) {
@@ -160,6 +185,9 @@ public class BookCopyManager {
                 BookCopy bookCopy = new BookCopy(id, book, shelfLocation, addedToLibrary,
                         lent, loanDate, customerID);
                 bookCopies.put(id, bookCopy);
+                // Die nächste neue ID muss hinter der größten importierten
+                // liegen, sonst überschreibt eine neue Kopie eine eingelesene.
+                nextId = Math.max(nextId, id + 1);
 
                 if (lent) {
                     customerManager.getCustomer(customerID).addBookCopy(bookCopy);

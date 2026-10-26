@@ -115,7 +115,11 @@ public class LibraryCLI {
         LibraryCLI libraryCLI = new LibraryCLI(bookManager, bookCopyManager,
                 customerManager, reservationManager, loanService, reportService, scanner);
         libraryCLI.start();
-        libraryCLI.save(dataDir);
+        if (!libraryCLI.save(dataDir)) {
+            // Ein verlorener Zustand darf nicht als Erfolg durchgehen: Skripte
+            // und die Shell sollen den Fehlschlag am Exit-Code erkennen.
+            System.exit(1);
+        }
     }
 
     /**
@@ -160,7 +164,8 @@ public class LibraryCLI {
      * @param bookCopyManager    the book-copy manager to populate
      * @param reservationManager the reservation manager to populate
      * @throws RuntimeException when saved data exists but cannot be parsed,
-     *                          e.g. a copy referencing a removed customer
+     *                          e.g. a copy or a reservation referencing a
+     *                          removed customer or book
      */
     static void loadState(Path dataDir, BookManager bookManager,
                           CustomerManager customerManager, BookCopyManager bookCopyManager,
@@ -174,22 +179,34 @@ public class LibraryCLI {
         // Reservations have no bundled fixture and only exist once a previous
         // run has saved them, so they are only imported when the file is there.
         if (Files.isRegularFile(dataDir.resolve(CsvExporter.RESERVATIONS_FILE))) {
-            reservationManager.importReservations(prefix + CsvExporter.RESERVATIONS_FILE);
+            reservationManager.importReservations(prefix + CsvExporter.RESERVATIONS_FILE,
+                    bookManager, customerManager);
         }
     }
 
     /**
      * Persists the current state as CSV files into {@code dataDir}.
      *
+     * <p>Erfolg wird auf stdout gemeldet, ein Fehlschlag auf stderr — und der
+     * Rückgabewert sagt dem Aufrufer, dass der Zustand verloren ist. Früher
+     * ging auch der Fehler nach stdout und der Prozess endete mit 0, sodass
+     * ein Skript einen verlorenen Speichervorgang für Erfolg hielt.</p>
+     *
      * @param dataDir the target directory
+     * @return {@code true} when every file was written, {@code false} when the
+     *         state could not be saved
      */
-    public void save(Path dataDir) {
+    public boolean save(Path dataDir) {
         try {
             CsvExporter.save(dataDir, bookManager, customerManager, bookCopyManager,
                     reservationManager);
             System.out.println("Daten wurden gespeichert in: " + dataDir.toAbsolutePath());
+            return true;
         } catch (IOException e) {
-            System.out.println("Fehler beim Speichern: " + e.getMessage());
+            System.err.println("Fehler beim Speichern: " + e.getMessage());
+            System.err.println("Die Daten konnten nicht gespeichert werden; "
+                    + "Änderungen dieser Sitzung gehen verloren.");
+            return false;
         }
     }
 
@@ -770,7 +787,8 @@ public class LibraryCLI {
             if (isbn == null) {
                 return;
             }
-            String blocker = bookManager.deletionBlocker(isbn, bookCopyManager);
+            String blocker = bookManager.deletionBlocker(isbn, bookCopyManager,
+                    reservationManager);
             if (blocker != null) {
                 System.out.println(blocker);
                 continue;
@@ -824,7 +842,7 @@ public class LibraryCLI {
             if (!running || id == -1) {
                 return;
             }
-            String blocker = customerManager.deletionBlocker(id);
+            String blocker = customerManager.deletionBlocker(id, reservationManager);
             if (blocker != null) {
                 System.out.println(blocker);
                 continue;
