@@ -13,8 +13,9 @@ including the reservation queue in `reservations.csv`).
 ## Build commands
 
 ```bash
-# full clean + test (the canonical verification command)
-./mvnw clean test
+# full clean + test + coverage gate (the canonical verification command)
+./mvnw clean verify
+# NOTE: `clean test` skips the JaCoCo 0.70 coverage check - it only runs at verify.
 
 # build the JAR
 ./mvnw clean package
@@ -24,7 +25,7 @@ java -cp target/classes com.example.library.cli.LibraryCLI
 ```
 
 The Maven Wrapper (`mvnw` / `mvnw.cmd`) is committed; it downloads Maven
-3.9.9 automatically. Java 21 is required (matches `.github/workflows/ci.yml`).
+3.10.0 automatically. Java 21 is required (matches `.github/workflows/ci.yml`).
 
 CI: `.github/workflows/ci.yml` runs `./mvnw -B verify` on JDK 21 (Temurin)
 for pushes/PRs to `master` (plus `merge_group` and manual
@@ -32,7 +33,10 @@ for pushes/PRs to `master` (plus `merge_group` and manual
 
 ## Architecture rules
 
-1. **Layering.** `cli` → `service` → `manager` → `model`. The CLI layer owns
+1. **Layering.** `cli` → {`service`, `csv`} → `manager` → `model`. The managers
+   call `csv.CsvImporter` to read their fixtures, and `LibraryCLI` uses
+   `CsvExporter` directly to save the state - so `csv` sits beside `service`,
+   not under `manager`. The CLI layer owns
    all `Scanner` / `System.out` I/O. Service classes contain **only** pure
    business logic — no `System.out`, no `Scanner`, no `System.exit`.
    The manager layer holds **no** `Scanner` at all: the interactive
@@ -43,9 +47,11 @@ for pushes/PRs to `master` (plus `merge_group` and manual
 2. **Errors as exceptions.** Services throw (`IllegalArgumentException` for
    missing entities, `IllegalStateException` for invalid state) instead of
    printing and returning silently. The CLI catches and prints them.
-3. **Classpath resources.** CSV fixtures live in `src/main/resources/` and are
-   loaded with `getClass().getResourceAsStream("/<file>.csv")` — never from
-   hardcoded `src/` filesystem paths.
+3. **CSV sources.** Fixtures live in `src/main/resources/` and are loaded with
+   `getClass().getResourceAsStream("/<file>.csv")` — never from hardcoded `src/`
+   filesystem paths. Saved state is the one exception: `LibraryCLI.loadState`
+   reads `./data/*.csv` from the data dir and only falls back to the classpath
+   fixtures on a first start.
 4. **UTF-8 everywhere.** All source, resources, and the Maven
    `project.build.sourceEncoding` are UTF-8 (no BOM). German filenames like
    `bücher.csv` are intentional.

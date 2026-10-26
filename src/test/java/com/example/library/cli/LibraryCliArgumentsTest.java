@@ -46,6 +46,8 @@ class LibraryCliArgumentsTest {
     void versionFallsBackToDevOutsideAJar() {
         // Tests run against target/classes, so the package has no
         // Implementation-Version; the fallback keeps --version usable there.
-        assertThat(LibraryCLI.version()).isNotBlank();
+        // isNotBlank() would also pass for "1.0-SNAPSHOT" or any other text
+        // and therefore never tested the fallback it claims to test.
+        assertThat(LibraryCLI.version()).isEqualTo("dev");
     }
 }

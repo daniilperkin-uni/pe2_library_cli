@@ -4,6 +4,9 @@ import com.example.library.manager.BookCopyManager;
 import com.example.library.manager.BookManager;
 import com.example.library.manager.CustomerManager;
 import com.example.library.manager.ReservationManager;
+import com.example.library.model.Book;
+import com.example.library.model.BookCopy;
+import com.example.library.model.Customer;
 import com.example.library.model.Reservation;
 import com.example.library.service.LoanService;
 import org.junit.jupiter.api.Test;
@@ -12,12 +15,16 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CsvExporterTest {
+
+    /** Same pattern CsvExporter uses for addedToLibrary. */
+    private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
     @Test
     void savedStateRoundTripsThroughImporters(@TempDir Path dir) throws Exception {
@@ -39,17 +46,57 @@ class CsvExporterTest {
         copies2.importBookCopies(dir.resolve(CsvExporter.COPIES_FILE).toString(),
                 books2, customers2);
 
-        assertThat(books2.getBooks()).hasSameSizeAs(books.getBooks());
+        // Jedes Feld jedes Objekts, nicht nur Titel und Autor: eine vertauschte
+        // Spalte in CsvExporter (Jahr/Stadt/Verlag/Auflage, Regal/Ort, Gebühren)
+        // fällt sonst durch, weil der Import die Werte einfach anders zuordnet.
         assertThat(books2.getBooks().keySet()).isEqualTo(books.getBooks().keySet());
-        assertThat(customers2.getCustomers()).hasSameSizeAs(customers.getCustomers());
-        assertThat(copies2.getBookCopies()).hasSameSizeAs(copies.getBookCopies());
-        assertThat(copies2.getBookCopy(1).isLent()).isTrue();
-        assertThat(copies2.getBookCopy(1).getCustomerID()).isEqualTo(2);
-        assertThat(customers2.getCustomer(2).getBookCopies()).isNotEmpty();
-        books.getBooks().forEach((isbn, b) -> {
-            assertThat(books2.getBook(isbn).getTitle()).isEqualTo(b.getTitle());
-            assertThat(books2.getBook(isbn).getAuthors()).isEqualTo(b.getAuthors());
+        books.getBooks().forEach((isbn, expected) -> {
+            Book actual = books2.getBook(isbn);
+            assertThat(actual).isNotNull();
+            assertThat(actual.getIsbn()).isEqualTo(expected.getIsbn());
+            assertThat(actual.getTitle()).isEqualTo(expected.getTitle());
+            assertThat(actual.getAuthors()).isEqualTo(expected.getAuthors());
+            assertThat(actual.getYear()).isEqualTo(expected.getYear());
+            assertThat(actual.getCity()).isEqualTo(expected.getCity());
+            assertThat(actual.getPublisher()).isEqualTo(expected.getPublisher());
+            assertThat(actual.getEdition()).isEqualTo(expected.getEdition());
         });
+
+        assertThat(customers2.getCustomers().keySet())
+                .isEqualTo(customers.getCustomers().keySet());
+        customers.getCustomers().forEach((id, expected) -> {
+            Customer actual = customers2.getCustomer(id);
+            assertThat(actual).isNotNull();
+            assertThat(actual.getId()).isEqualTo(expected.getId());
+            assertThat(actual.getName()).isEqualTo(expected.getName());
+            assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
+            assertThat(actual.getAddress()).isEqualTo(expected.getAddress());
+            assertThat(actual.getZipCode()).isEqualTo(expected.getZipCode());
+            assertThat(actual.getCity()).isEqualTo(expected.getCity());
+            assertThat(actual.isFeesPayed()).isEqualTo(expected.isFeesPayed());
+        });
+
+        assertThat(copies2.getBookCopies().keySet()).isEqualTo(copies.getBookCopies().keySet());
+        copies.getBookCopies().forEach((id, expected) -> {
+            BookCopy actual = copies2.getBookCopy(id);
+            assertThat(actual).isNotNull();
+            assertThat(actual.getId()).isEqualTo(expected.getId());
+            assertThat(actual.getBook().getIsbn()).isEqualTo(expected.getBook().getIsbn());
+            assertThat(actual.getShelfLocation()).isEqualTo(expected.getShelfLocation());
+            // addedToLibrary geht als yyyy-MM-dd über die CSV, die Uhrzeit
+            // ist also weg — verglichen wird deshalb der formatierte Tag.
+            assertThat(FORMAT.format(actual.getAddedToLibrary()))
+                    .isEqualTo(FORMAT.format(expected.getAddedToLibrary()));
+            assertThat(actual.isLent()).isEqualTo(expected.isLent());
+            assertThat(actual.getLoanDate()).isEqualTo(expected.getLoanDate());
+            assertThat(actual.getCustomerID()).isEqualTo(expected.getCustomerID());
+        });
+
+        // Die Ausleihe muss auch am Kunden wieder hängen, nicht nur an der Kopie.
+        // Kunde 2 hat beide Kopien: Nummer 1 frisch ausgeliehen, Nummer 2 aus
+        // dem Fixture. Der Import muss beide wieder in seiner Liste führen.
+        assertThat(customers2.getCustomer(2).getBookCopies())
+                .containsExactlyInAnyOrder(copies2.getBookCopy(1), copies2.getBookCopy(2));
     }
 
     @Test

@@ -72,8 +72,13 @@ only synthetic placeholder data (no real PII).
 ## Build & test
 
 ```bash
-./mvnw clean test
+./mvnw clean verify
 ```
+
+`verify` is the canonical command: it compiles, runs the JUnit suite and then
+the JaCoCo instruction-coverage check (`minimum 0.70`), which is bound to the
+`verify` phase. `./mvnw clean test` stops after Surefire and therefore passes
+even when coverage drops below the gate.
 
 To build the JAR without running tests:
 
@@ -148,5 +153,11 @@ number and pressing Enter.
 Automated tests use **JUnit 5** (Jupiter) and AssertJ. Run them with:
 
 ```bash
-./mvnw clean test
+./mvnw clean verify
 ```
+
+That command also enforces the JaCoCo instruction-coverage minimum of 0.70,
+which only runs at `verify` — a plain `./mvnw clean test` skips the gate.
+The suite covers the model classes, the CSV parser and exporter (including a
+save/load round trip of every field), the managers, the loan/fine logic and
+the scripted CLI sessions.
