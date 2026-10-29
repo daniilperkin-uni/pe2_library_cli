@@ -16,7 +16,7 @@ import java.time.LocalDate;
  * @param createdAt  when the reservation was placed (drives FIFO ordering)
  */
 public record Reservation(
-        long id,
+        int id,
         String bookIsbn,
         int customerId,
         LocalDate createdAt) {
@@ -29,7 +29,7 @@ public record Reservation(
      * @param customerId waiting customer id
      * @return new reservation dated today
      */
-    public static Reservation now(long id, String bookIsbn, int customerId) {
+    public static Reservation now(int id, String bookIsbn, int customerId) {
         return new Reservation(id, bookIsbn, customerId, LocalDate.now());
     }
 }

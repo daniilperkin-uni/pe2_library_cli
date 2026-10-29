@@ -24,7 +24,7 @@ import java.util.Optional;
 public class ReservationManager {
 
     private final List<Reservation> reservations = new ArrayList<>();
-    private long nextId = 1;
+    private int nextId = 1;
 
     /**
      * Adds a reservation to the end of the queue.
@@ -107,7 +107,7 @@ public class ReservationManager {
      * @param reservationId the id of the reservation to cancel
      * @return the removed reservation, or empty when no such id exists
      */
-    public Optional<Reservation> cancel(long reservationId) {
+    public Optional<Reservation> cancel(int reservationId) {
         Optional<Reservation> found = reservations.stream()
                 .filter(r -> r.id() == reservationId)
                 .findFirst();
@@ -125,7 +125,7 @@ public class ReservationManager {
         return reservations.stream()
                 .filter(r -> r.bookIsbn().equals(bookIsbn))
                 .sorted(Comparator.comparing(Reservation::createdAt)
-                        .thenComparingLong(Reservation::id))
+                        .thenComparingInt(Reservation::id))
                 .toList();
     }
 
@@ -137,7 +137,7 @@ public class ReservationManager {
     public List<Reservation> all() {
         return reservations.stream()
                 .sorted(Comparator.comparing(Reservation::createdAt)
-                        .thenComparingLong(Reservation::id))
+                        .thenComparingInt(Reservation::id))
                 .toList();
     }
 
@@ -183,7 +183,7 @@ public class ReservationManager {
             for (CsvImporter.Row row : rows) {
                 CsvImporter.requireColumns(row, resourcePath, 4);
                 String[] parts = row.fields();
-                long id = Long.parseLong(parts[0].trim());
+                int id = Integer.parseInt(parts[0].trim());
                 String bookIsbn = parts[1].trim();
                 int customerId = Integer.parseInt(parts[2].trim());
                 LocalDate createdAt = LocalDate.parse(parts[3].trim());

@@ -38,7 +38,7 @@ class LoanServiceFineTest {
         loanService = new LoanService(bookCopyManager, new CustomerManager());
     }
 
-    private BookCopy lentCopy(long id, LocalDate loanDate) {
+    private BookCopy lentCopy(int id, LocalDate loanDate) {
         return new BookCopy(id, null, "A1", new Date(), true, loanDate, -1);
     }
 
@@ -46,7 +46,7 @@ class LoanServiceFineTest {
     @DisplayName("No fine while the copy is still within the loan period")
     void noFineWithinPeriod() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = lentCopy(1L, today.minusDays(10));
+        BookCopy copy = lentCopy(1, today.minusDays(10));
         assertEquals(0.0, loanService.calculateFine(copy, today), 1e-9);
     }
 
@@ -54,7 +54,7 @@ class LoanServiceFineTest {
     @DisplayName("Exactly at the deadline still no fine")
     void noFineAtDeadline() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = lentCopy(2L, today.minusDays(LOAN_PERIOD_DAYS));
+        BookCopy copy = lentCopy(2, today.minusDays(LOAN_PERIOD_DAYS));
         assertEquals(0.0, loanService.calculateFine(copy, today), 1e-9);
     }
 
@@ -62,7 +62,7 @@ class LoanServiceFineTest {
     @DisplayName("One day overdue charges one day at the configured rate")
     void finePerDay() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = lentCopy(3L, today.minusDays(LOAN_PERIOD_DAYS + 1));
+        BookCopy copy = lentCopy(3, today.minusDays(LOAN_PERIOD_DAYS + 1));
         assertEquals(FINE_PER_DAY_EURO, loanService.calculateFine(copy, today), 1e-9);
     }
 
@@ -70,7 +70,7 @@ class LoanServiceFineTest {
     @DisplayName("Ten days overdue charges ten days")
     void fineScalesWithDays() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = lentCopy(4L, today.minusDays(LOAN_PERIOD_DAYS + 10));
+        BookCopy copy = lentCopy(4, today.minusDays(LOAN_PERIOD_DAYS + 10));
         assertEquals(10 * FINE_PER_DAY_EURO, loanService.calculateFine(copy, today), 1e-9);
     }
 
@@ -78,7 +78,7 @@ class LoanServiceFineTest {
     @DisplayName("A copy that is not lent accrues no fine")
     void notLentNoFine() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = new BookCopy(5L, null, "B2", new Date(), false,
+        BookCopy copy = new BookCopy(5, null, "B2", new Date(), false,
                 today.minusDays(100), -1);
         assertEquals(0.0, loanService.calculateFine(copy, today), 1e-9);
     }
@@ -88,7 +88,7 @@ class LoanServiceFineTest {
     void nullSafe() {
         LocalDate today = LocalDate.now();
         assertEquals(0.0, loanService.calculateFine(null, today), 1e-9);
-        BookCopy copy = new BookCopy(6L, null, "B3", new Date(), true, null, -1);
+        BookCopy copy = new BookCopy(6, null, "B3", new Date(), true, null, -1);
         assertEquals(0.0, loanService.calculateFine(copy, today), 1e-9);
     }
 
@@ -102,7 +102,7 @@ class LoanServiceFineTest {
     @DisplayName("Overdue days are reported directly and agree with the fine")
     void overdueDaysAgreeWithFine() {
         LocalDate today = LocalDate.now();
-        BookCopy copy = lentCopy(7L, today.minusDays(LOAN_PERIOD_DAYS + 10));
+        BookCopy copy = lentCopy(7, today.minusDays(LOAN_PERIOD_DAYS + 10));
 
         // Beide Werte stehen als Literal im Test. calculateFine ist genau
         // overdueDays * FINE_PER_DAY_EURO; eine Assertion gegen diese Formel

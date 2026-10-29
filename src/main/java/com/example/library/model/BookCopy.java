@@ -12,7 +12,7 @@ import java.util.Date;
  */
 public class BookCopy {
 
-    private long id;
+    private int id;
     private Book book;
     private String shelfLocation;
     private Date addedToLibrary;
@@ -32,7 +32,7 @@ public class BookCopy {
      * @param customerID    the ID of the customer who borrowed this copy, or {@code -1} if not lent
      * @throws IllegalArgumentException if {@code addedToLibrary} is {@code null}
      */
-    public BookCopy(long id, Book book, String shelfLocation, Date addedToLibrary,
+    public BookCopy(int id, Book book, String shelfLocation, Date addedToLibrary,
                     boolean lent, LocalDate loanDate, int customerID) {
         // Das Speicherformat schreibt das Aufnahmedatum als yyyy-MM-dd; ein
         // null-Wert ließe sich nicht zurückschreiben und brachte den Export
@@ -82,7 +82,7 @@ public class BookCopy {
      *
      * @return the copy ID
      */
-    public long getId() {
+    public int getId() {
         return id;
     }
 

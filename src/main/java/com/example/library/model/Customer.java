@@ -10,7 +10,7 @@ import java.util.List;
  */
 public class Customer {
 
-    private long id;
+    private int id;
     private String name;
     private String firstName;
     private String address;
@@ -31,7 +31,7 @@ public class Customer {
      * @param feesPayed  whether library fees are paid up to date
      * @param bookCopies the list of currently borrowed book copies
      */
-    public Customer(long id, String name, String firstName, String address, String zipCode,
+    public Customer(int id, String name, String firstName, String address, String zipCode,
                     String city, boolean feesPayed, List<BookCopy> bookCopies) {
         this.id = id;
         this.name = name;
@@ -75,7 +75,7 @@ public class Customer {
      *
      * @return the customer ID
      */
-    public long getId() {
+    public int getId() {
         return id;
     }
 

@@ -60,7 +60,7 @@ public final class CsvExporter {
         lines.clear();
         lines.add("id,name,firstName,address,zipCode,city,feesPayed");
         customers.getCustomers().values().stream()
-                .sorted(Comparator.comparingLong(Customer::getId))
+                .sorted(Comparator.comparingInt(Customer::getId))
                 .forEach(c -> lines.add(String.join(",", String.valueOf(c.getId()),
                         q(c.getName()), q(c.getFirstName()), q(c.getAddress()),
                         q(c.getZipCode()), q(c.getCity()), c.isFeesPayed() ? "yes" : "no")));
@@ -70,7 +70,7 @@ public final class CsvExporter {
         lines.add("id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID");
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
         copies.getBookCopies().values().stream()
-                .sorted(Comparator.comparingLong(BookCopy::getId))
+                .sorted(Comparator.comparingInt(BookCopy::getId))
                 .forEach(bc -> lines.add(String.join(",", String.valueOf(bc.getId()),
                         q(bc.getBook() == null ? "" : bc.getBook().getIsbn()),
                         q(bc.getShelfLocation()), fmt.format(bc.getAddedToLibrary()),
@@ -82,7 +82,7 @@ public final class CsvExporter {
         lines.clear();
         lines.add("id,bookIsbn,customerId,createdAt");
         reservations.all().stream()
-                .sorted(Comparator.comparingLong(Reservation::id))
+                .sorted(Comparator.comparingInt(Reservation::id))
                 .forEach(r -> lines.add(String.join(",", String.valueOf(r.id()),
                         q(r.bookIsbn()), String.valueOf(r.customerId()),
                         r.createdAt().toString())));
