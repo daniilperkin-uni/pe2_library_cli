@@ -162,7 +162,10 @@ public class BookManager {
                 String[] parts = row.fields();
                 String isbn = parts[0].trim();
                 String title = parts[1].trim();
-                List<String> authors = Arrays.asList(parts[2].trim().split(";"));
+                List<String> authors = Arrays.stream(parts[2].split(";"))
+                        .map(String::trim)
+                        .filter(author -> !author.isEmpty())
+                        .toList();
                 int year = Integer.parseInt(parts[3].trim());
                 String city = parts[4].trim();
                 String publisher = parts[5].trim();

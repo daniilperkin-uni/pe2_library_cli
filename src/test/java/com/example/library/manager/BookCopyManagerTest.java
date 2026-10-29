@@ -202,4 +202,27 @@ class BookCopyManagerTest {
                 .hasRootCauseMessage("Unparseable date: \"2024-02-31\"");
         assertThat(bookCopyManager.getBookCopies()).hasSize(2);
     }
+    @Test
+    void findByAuthor_matches_a_secondary_author_from_an_imported_csv(@TempDir Path dir)
+            throws IOException {
+        Path booksCsv = dir.resolve("bücher.csv");
+        Path copiesCsv = dir.resolve("buchkopien.csv");
+        // Übliche Schreibweise mit Leerzeichen nach dem Semikolon.
+        Files.writeString(booksCsv, "isbn,title,authors,year,city,publisher,edition\n"
+                + "111,Gemeinsames Buch,Erste Autorin; Zweite Autorin,2024,Ort,Verlag,1\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(copiesCsv, "id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID\n"
+                + "1,111,A1,2024-01-01,no,,\n", StandardCharsets.UTF_8);
+
+        BookManager freshBooks = new BookManager();
+        freshBooks.importBooks(booksCsv.toString());
+        BookCopyManager freshCopies = new BookCopyManager();
+        freshCopies.importBookCopies(copiesCsv.toString(), freshBooks, customerManager);
+
+        // QA-003: ungetrimmte Autor-Token ließen " Zweite Autorin" entstehen,
+        // sodass die Suche nach dem zweiten Autor leer blieb.
+        assertThat(freshBooks.getBook("111").getAuthors())
+                .containsExactly("Erste Autorin", "Zweite Autorin");
+        assertThat(freshCopies.findByAuthor("Zweite Autorin")).hasSize(1);
+    }
 }
