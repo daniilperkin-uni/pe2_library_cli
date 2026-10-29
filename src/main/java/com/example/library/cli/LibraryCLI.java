@@ -535,11 +535,13 @@ public class LibraryCLI {
     }
 
     /**
-     * Places a reservation for a customer on a title that currently has no
-     * available copy.
+     * Places a reservation for a customer on a title.
      *
-     * <p>Both the book (by ISBN) and the waiting customer must exist; unknown
-     * values are rejected before anything is enqueued.</p>
+     * <p>Availability is deliberately not checked: the queue is a waiting list
+     * that the staff consults when a copy comes back, so reserving a title that
+     * still has a free copy is allowed. Both the book (by ISBN) and the waiting
+     * customer must exist; unknown values are rejected before anything is
+     * enqueued.</p>
      */
     public void reserveTitle() {
         String isbn = readIsbnOrCancel("ISBN des gewünschten Titels: ");

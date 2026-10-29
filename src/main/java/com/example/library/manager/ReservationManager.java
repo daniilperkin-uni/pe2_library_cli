@@ -33,6 +33,13 @@ public class ReservationManager {
      * reservation for the same pair would occupy two places in the FIFO queue
      * and hand the same person the title twice.</p>
      *
+     * <p>This manager owns only its own queue, so it cannot look the ISBN or the
+     * customer up: the caller has to make sure both exist before enqueueing.
+     * {@code LibraryCLI.reserveTitle} does that, and
+     * {@link #importReservations} rejects a saved row whose book or customer is
+     * gone, so a reservation that survived a restart always points at real
+     * entities.</p>
+     *
      * @param bookIsbn   the ISBN of the requested book
      * @param customerId the id of the waiting customer
      * @return the created reservation
