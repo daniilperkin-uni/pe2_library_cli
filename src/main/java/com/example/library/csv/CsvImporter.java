@@ -78,24 +78,6 @@ public final class CsvImporter {
     }
 
     /**
-     * Parses a CSV stream into a list of rows, where each row is an array of
-     * field strings.
-     *
-     * @param input     the input stream to read from (UTF-8 encoded)
-     * @param hasHeader if {@code true}, the first non-empty line is skipped
-     * @return a list of parsed rows
-     * @throws IOException              if an I/O error occurs or a quoted field is not properly closed
-     * @throws IllegalArgumentException if {@code input} is {@code null}
-     */
-    public static List<String[]> parse(InputStream input, boolean hasHeader) throws IOException {
-        List<String[]> rows = new ArrayList<>();
-        for (Row row : parseRows(input, hasHeader)) {
-            rows.add(row.fields());
-        }
-        return rows;
-    }
-
-    /**
      * Parses a CSV stream into rows that remember their physical line number.
      *
      * <p>Blank lines and the header are skipped, but the numbering still

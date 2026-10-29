@@ -154,16 +154,6 @@ public class ReservationManager {
     }
 
     /**
-     * Number of customers waiting for the given title.
-     *
-     * @param bookIsbn the requested book ISBN
-     * @return queue size
-     */
-    public long queueSize(String bookIsbn) {
-        return queueFor(bookIsbn).size();
-    }
-
-    /**
      * Restores the queue from a CSV source: either a filesystem path or a
      * classpath resource (see {@link CsvImporter#open}).
      *

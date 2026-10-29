@@ -13,8 +13,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CsvImporterTest {
 
     private List<String[]> parse(String csv, boolean hasHeader) throws IOException {
-        return CsvImporter.parse(
-                new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), hasHeader);
+        return CsvImporter.parseRows(
+                        new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), hasHeader)
+                .stream().map(CsvImporter.Row::fields).toList();
     }
 
     @Test
@@ -69,7 +70,7 @@ class CsvImporterTest {
 
     @Test
     void parse_null_input_throws_illegal_argument() {
-        assertThatThrownBy(() -> CsvImporter.parse(null, false))
+        assertThatThrownBy(() -> CsvImporter.parseRows(null, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -44,15 +44,6 @@ public class Customer {
     }
 
     /**
-     * Sets whether this customer's fees are paid.
-     *
-     * @param feesPayed {@code true} if fees are paid, {@code false} otherwise
-     */
-    public void setFeesPayed(boolean feesPayed) {
-        this.feesPayed = feesPayed;
-    }
-
-    /**
      * Adds a book copy to this customer's borrowed list.
      *
      * @param bookCopy the copy to add

@@ -52,15 +52,6 @@ class CustomerTest {
     }
 
     @Test
-    void setFeesPayed_toggles_state() {
-        Customer c = newCustomer();
-        assertThat(c.isFeesPayed()).isTrue();
-
-        c.setFeesPayed(false);
-        assertThat(c.isFeesPayed()).isFalse();
-    }
-
-    @Test
     void toString_contains_id_and_bookCopiesLent_count() {
         Customer c = newCustomer();
         c.addBookCopy(new BookCopy(1, null, "A", new Date(), true, null, 1));
