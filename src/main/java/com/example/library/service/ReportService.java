@@ -22,6 +22,17 @@ import java.util.TreeMap;
  */
 public class ReportService {
 
+    /**
+     * Bucket used for books whose publisher is unknown.
+     *
+     * <p>{@link Book#getPublisher()} may be {@code null} for a book built
+     * directly through the constructor, and a {@link TreeMap} throws a
+     * {@link NullPointerException} on a {@code null} key. Normalising the
+     * value keeps the publisher report renderable instead of aborting the
+     * whole menu (QA-001).</p>
+     */
+    static final String UNKNOWN_PUBLISHER = "(Unbekannter Verlag)";
+
     private final BookManager bookManager;
     private final BookCopyManager bookCopyManager;
     private final CustomerManager customerManager;
@@ -139,7 +150,7 @@ public class ReportService {
         Map<String, Integer> publisherBookCopies = new TreeMap<>();
 
         for (Book book : bookManager.getBooks().values()) {
-            publisherBookCopies.putIfAbsent(book.getPublisher(), 0);
+            publisherBookCopies.putIfAbsent(publisherOf(book), 0);
         }
 
         for (BookCopy bookCopy : bookCopies.values()) {
@@ -147,7 +158,7 @@ public class ReportService {
             if (book == null) {
                 continue;
             }
-            publisherBookCopies.merge(book.getPublisher(), 1, Integer::sum);
+            publisherBookCopies.merge(publisherOf(book), 1, Integer::sum);
         }
 
         List<String> lines = new ArrayList<>();
@@ -165,5 +176,17 @@ public class ReportService {
                     entry.getKey(), count, percent));
         }
         return lines;
+    }
+
+    /**
+     * Publisher name used as the report key, with a readable fallback for
+     * books that carry no publisher.
+     *
+     * @param book the book whose publisher is needed
+     * @return the publisher, or {@link #UNKNOWN_PUBLISHER} when it is {@code null}
+     */
+    private static String publisherOf(Book book) {
+        String publisher = book.getPublisher();
+        return publisher == null ? UNKNOWN_PUBLISHER : publisher;
     }
 }

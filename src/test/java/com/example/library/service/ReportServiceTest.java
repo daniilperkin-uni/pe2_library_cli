@@ -133,6 +133,22 @@ class ReportServiceTest {
     }
 
     @Test
+    void getBookCopiesOfPublisher_handles_a_book_without_publisher() {
+        Book anonymous = new Book("444", "Book Four", List.of("Author D"),
+                2004, "CityD", null, 1);
+        bookManager.getBooks().put("444", anonymous);
+        bookCopyManager.getBookCopies().put(4, new BookCopy(4, anonymous, "D1",
+                new Date(), false, null, -1));
+
+        // QA-001: a null publisher used to abort the report with a
+        // NullPointerException from the TreeMap key comparison.
+        List<String> report = reportService.getBookCopiesOfPublisher();
+
+        assertThat(report)
+                .anyMatch(line -> line.startsWith("(Unbekannter Verlag): 1 Buchkopien"));
+    }
+
+    @Test
     void getBookCopiesOfPublisher_empty_when_no_data() {
         ReportService empty = new ReportService(new BookManager(),
                 new BookCopyManager(), new CustomerManager());
