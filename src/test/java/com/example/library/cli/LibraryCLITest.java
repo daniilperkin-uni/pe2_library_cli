@@ -76,6 +76,24 @@ class LibraryCLITest {
     }
 
     @Test
+    void reportOfCustomerLoansSurvivesEndOfInput() {
+        // QA-004: der Menüpunkt las direkt vom Scanner und brach bei EOF mit
+        // einer NoSuchElementException ab, statt den Menüpunkt zu verlassen.
+        String output = run("8\n5\n");
+        assertThat(output).contains("Bitte geben Sie die Kunden-ID ein");
+        assertThat(output).doesNotContain("Exception");
+    }
+
+    @Test
+    void reportOfCustomerLoansRetriesAfterNonNumericInput() {
+        // QA-004: nicht-numerische Eingabe kehrte früher sofort ins Menü zurück,
+        // statt wie jeder andere Menüpunkt erneut zu fragen.
+        String output = run("8\n5\nabc\n2\n7\n9\n");
+        assertThat(output).contains("Ungültige Eingabe! Bitte geben Sie eine Zahl ein.");
+        assertThat(output).contains("BookCopy{id=2");
+    }
+
+    @Test
     void reservationForUnknownCustomerIsRejected() {
         String output = run("7\n1\n3036959548\n999\n2\n");
         assertThat(output).contains("Es existiert kein Kunde mit dieser ID: 999");

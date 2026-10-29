@@ -655,17 +655,14 @@ public class LibraryCLI {
 
     /**
      * Prompts for a customer ID and prints that customer's lent book copies.
+     *
+     * <p>Liest über {@link #readInt}, damit ein nicht-numerischer Wert erneut
+     * abgefragt wird und ein Eingabe-Ende (EOF) den Menüpunkt verlässt statt
+     * mit einer {@link java.util.NoSuchElementException} abzubrechen (QA-004).</p>
      */
     private void printLentBookCopiesOfCustomer() {
-        System.out.print("Bitte geben Sie die Kunden-ID ein (oder -1 zum Abbrechen): ");
-        int customerId;
-        try {
-            customerId = Integer.parseInt(scanner.nextLine().trim());
-        } catch (NumberFormatException e) {
-            System.out.println("Ungültige Eingabe! Bitte eine ganze Zahl eingeben.");
-            return;
-        }
-        if (customerId == -1) {
+        int customerId = readInt("Bitte geben Sie die Kunden-ID ein (oder -1 zum Abbrechen): ");
+        if (!running || customerId == -1) {
             return;
         }
         try {
