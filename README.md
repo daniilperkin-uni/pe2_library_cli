@@ -28,7 +28,8 @@ Features:
 - Creating books, book copies and customers directly in the menus
 - CSV import of books, copies and customers (quoted-field aware, UTF-8)
 - Loans, returns and late-return fines
-- Reservations (Vormerkungen) with a per-title (ISBN) queue
+- Reservations (Vormerkungen) with a per-title (ISBN) queue; only books and
+  customers that actually exist can be queued
 - Reports on the current stock and loans
 - **State is saved on exit** to a data directory (default `./data`) in the
   same CSV format and reloaded on the next start — books, customers, book
@@ -97,13 +98,21 @@ Run the application:
 java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar [data-dir]
 ```
 
+`--help` / `-h` prints the usage, `--version` / `-V` prints the packaged
+version; both exit before any data is touched.
+
+```bash
+java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar --help
+java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar --version
+```
+
 `data-dir` defaults to `./data`. If it already contains saved CSV files they
 are loaded; otherwise the bundled fixtures are used. On exit the current state
 is written back there as `bücher.csv`, `benutzer.csv`, `buchkopien.csv` and
-`reservations.csv`. Deletion is guarded: a customer with open loans, a lent
-book copy and a book that still has copies cannot be deleted, and the app
-refuses to start on saved data that cannot be loaded (clear message, exit
-code 1) instead of crashing.
+`reservations.csv`. Deletion is guarded: a customer with open loans or a
+queue entry, a lent book copy, and a book that still has copies or an open
+reservation cannot be deleted, and the app refuses to start on saved data that
+cannot be loaded (clear message, exit code 1) instead of crashing.
 
 Sample session:
 
@@ -143,7 +152,8 @@ number and pressing Enter.
 - **LoanService** — pure business logic for loaning and returning book copies;
   throws on invalid operations (no console I/O).
 - **ReservationManager** — per-title (ISBN-keyed) reservation queues;
-  `importReservations` restores the queue saved on the previous run.
+  `reserve` rejects unknown books and customers, and `importReservations`
+  restores the queue saved on the previous run under the same check.
 - **CsvExporter** — writes state back to CSV on exit.
 - **ReportService** — pure business logic that returns report lines as lists
   for the CLI to print (no console I/O).
@@ -160,4 +170,6 @@ That command also enforces the JaCoCo instruction-coverage minimum of 0.70,
 which only runs at `verify` — a plain `./mvnw clean test` skips the gate.
 The suite covers the model classes, the CSV parser and exporter (including a
 save/load round trip of every field), the managers, the loan/fine logic and
-the scripted CLI sessions.
+the scripted CLI sessions. The reload path is covered explicitly: imported
+authors, strict dates and reservation references are all asserted, because a
+value the importer rejects makes the saved state unloadable.

@@ -42,7 +42,11 @@ for pushes/PRs to `master` (plus `merge_group` and manual
    The manager layer holds **no** `Scanner` at all: the interactive
    delete/search flows were replaced by pure `deletionBlocker(...)` +
    `remove...()` pairs and `findByIsbn/Title/Author`, and the CLI drives the
-   prompts. Remaining manager-side printing is the CSV import feedback
+   prompts. Cross-manager checks stay in the manager that owns the invariant
+   and take the other manager as a parameter - `ReservationManager.reserve(
+   isbn, customerId, bookManager, customerManager)` and
+   `BookCopyManager.addBookCopy(isbn, shelf, bookManager)` follow the same
+   shape. Remaining manager-side printing is the CSV import feedback
    ("… wurden erfolgreich importiert."), which is still on the to-do list.
 2. **Errors as exceptions.** Services throw (`IllegalArgumentException` for
    missing entities, `IllegalStateException` for invalid state) instead of
@@ -91,6 +95,31 @@ for pushes/PRs to `master` (plus `merge_group` and manual
   exit code 1 when the saved data cannot be loaded, instead of crashing with
   a stack trace.
 
+## Invariants from the QA pass (do not regress)
+
+- **Reservation references.** `ReservationManager.reserve` validates the ISBN
+  and the customer id before enqueueing. `importReservations` rejects a row
+  whose book or customer is gone, so a reservation that cannot be reloaded can
+  never be saved.
+- **Author tokens.** `BookManager.importBooks` trims every `;`-separated
+  author and drops empty ones, exactly like `LibraryCLI.addBook`. Without the
+  trim, `BookCopyManager.findByAuthor` misses every secondary author.
+- **Addition date.** `BookCopy` rejects a `null` `addedToLibrary` (the CSV
+  format cannot express it) and `BookCopyManager` parses the column with
+  `SimpleDateFormat.setLenient(false)`, so `2024-02-31` is reported instead of
+  silently becoming `2024-03-02`.
+- **Publisher report.** `ReportService.getBookCopiesOfPublisher` maps a `null`
+  publisher to `(Unbekannter Verlag)`; a `TreeMap` key comparison would throw.
+- **Menu input.** Every menu prompt reads through `LibraryCLI.readInt`, which
+  handles non-numeric input and end-of-input. No method calls
+  `scanner.nextLine()` directly.
+- **Id type.** Entity ids are `int` from the model down to the menu; the maps,
+  the CSV columns and `readInt` agree. Do not reintroduce `long` in one layer
+  only.
+- **No dead convenience API.** `CsvImporter.parse`, `Customer.setFeesPayed`
+  and `ReservationManager.queueSize` were removed because nothing called them.
+  Use `CsvImporter.parseRows`, `queueFor(isbn).size()` and the constructor.
+
 ## Test conventions
 
 - JUnit 5 (`org.junit.jupiter`) + AssertJ (`assertThat`).
@@ -103,6 +132,10 @@ for pushes/PRs to `master` (plus `merge_group` and manual
   in `LibraryCLI` now; `LibraryCLITest` drives them end-to-end by constructing a
   `Scanner` over a canned input string. The managers only answer
   `deletionBlocker(...)` and the `findBy...` lookups.
+- Build fixtures through the public API (`addBook`, `addCustomer`,
+  `addBookCopy`) where the generated ids are enough. `getBooks()`,
+  `getCustomers()` and `getBookCopies()` still hand out the live map and are the
+  seam for tests that need a specific id or ISBN.
 
 ## File map (post-refactor)
 
@@ -118,3 +151,4 @@ for pushes/PRs to `master` (plus `merge_group` and manual
 | `src/main/resources/*.csv` | sanitized fixtures |
 | `data/{bücher,benutzer,buchkopien,reservations}.csv` | state written on exit and reloaded on the next start |
 | `src/test/java/.../*.java` | JUnit 5 + AssertJ tests |
+| `docs/screenshots/*.webp` | README screenshots of real jar sessions |
