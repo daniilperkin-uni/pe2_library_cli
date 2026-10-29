@@ -66,7 +66,7 @@ public class BookManager {
     public String deletionBlocker(String isbn, BookCopyManager bookCopyManager,
                                   ReservationManager reservationManager) {
         if (!books.containsKey(isbn)) {
-            return "Es existiert kein Buch mit dieser ID: " + isbn;
+            return "Es existiert kein Buch mit dieser ISBN: " + isbn;
         }
         for (BookCopy copy : bookCopyManager.getBookCopies().values()) {
             if (copy.getBook() != null && isbn.equals(copy.getBook().getIsbn())) {

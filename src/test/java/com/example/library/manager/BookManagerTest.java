@@ -86,7 +86,7 @@ class BookManagerTest {
     void deletionBlocker_reports_an_unknown_isbn() {
         assertThat(bookManager.deletionBlocker("nope", new BookCopyManager(),
                 new ReservationManager()))
-                .contains("Es existiert kein Buch mit dieser ID: nope");
+                .contains("Es existiert kein Buch mit dieser ISBN: nope");
     }
 
     @Test
