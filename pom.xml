@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <!-- zentrale JUnit-BOM für einheitliche Versionierung -->
-        <junit.version>5.12.1</junit.version>
+        <junit.version>6.1.3</junit.version>
     </properties>
 
     <!-- BOM importieren, um alle JUnit-Komponenten auf die zentrale Version zu setzen -->
