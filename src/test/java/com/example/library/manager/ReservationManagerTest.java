@@ -2,6 +2,7 @@ package com.example.library.manager;
 
 import com.example.library.model.Customer;
 import com.example.library.model.Reservation;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,6 +25,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ReservationManagerTest {
 
+    private ReservationManager manager;
+    private BookManager bookManager;
+    private CustomerManager customerManager;
+
+    @BeforeEach
+    void setUp() {
+        manager = new ReservationManager();
+        bookManager = booksWithIsbns("isbn-1", "isbn-2", "isbn-3", "isbn-7");
+        customerManager = customersWithIds(100, 101);
+    }
+
     @Test
     @DisplayName("Queue serves requests for one book in FIFO order")
     void fifoOrderForBook(@TempDir Path dir) throws IOException {
@@ -37,7 +49,6 @@ class ReservationManagerTest {
                 + "2," + isbn + ",101,2024-02-01\n"
                 + "3," + isbn + ",102,2024-01-01\n", StandardCharsets.UTF_8);
 
-        ReservationManager manager = new ReservationManager();
         manager.importReservations(csv.toString(), books(), customersWithIds(100, 101, 102));
 
         var queue = manager.queueFor(isbn);
@@ -45,15 +56,14 @@ class ReservationManagerTest {
                 new Reservation(3, isbn, 102, LocalDate.of(2024, 1, 1)),
                 new Reservation(2, isbn, 101, LocalDate.of(2024, 2, 1)),
                 new Reservation(1, isbn, 100, LocalDate.of(2024, 3, 1))), queue);
-        assertEquals(3, manager.queueSize(isbn));
+        assertEquals(3, manager.queueFor(isbn).size());
     }
 
     @Test
     @DisplayName("Reservations for different books do not mix")
     void separateBooks() {
-        ReservationManager manager = new ReservationManager();
-        manager.reserve("isbn-1", 100);
-        manager.reserve("isbn-2", 100);
+        manager.reserve("isbn-1", 100, bookManager, customerManager);
+        manager.reserve("isbn-2", 100, bookManager, customerManager);
         assertEquals(1, manager.queueFor("isbn-1").size());
         assertEquals(1, manager.queueFor("isbn-2").size());
     }
@@ -61,30 +71,51 @@ class ReservationManagerTest {
     @Test
     @DisplayName("Cancelling removes the entry and shrinks the queue")
     void cancelRemovesEntry() {
-        ReservationManager manager = new ReservationManager();
-        Reservation toCancel = manager.reserve("isbn-3", 100);
-        manager.reserve("isbn-3", 101);
+        Reservation toCancel = manager.reserve("isbn-3", 100, bookManager, customerManager);
+        manager.reserve("isbn-3", 101, bookManager, customerManager);
 
         var removed = manager.cancel(toCancel.id());
         assertTrue(removed.isPresent());
         assertEquals(toCancel, removed.get());
-        assertEquals(1, manager.queueSize("isbn-3"));
+        assertEquals(1, manager.queueFor("isbn-3").size());
     }
 
     @Test
     @DisplayName("Cancelling an unknown id removes nothing")
     void cancelUnknownId() {
-        ReservationManager manager = new ReservationManager();
         assertTrue(manager.cancel(999).isEmpty());
     }
 
     @Test
     @DisplayName("Blank ISBN and non-positive customer id are rejected")
     void invalidInputsRejected() {
-        ReservationManager manager = new ReservationManager();
-        assertThrows(IllegalArgumentException.class, () -> manager.reserve("", 100));
-        assertThrows(IllegalArgumentException.class, () -> manager.reserve(null, 100));
-        assertThrows(IllegalArgumentException.class, () -> manager.reserve("isbn", -5));
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve("", 100, bookManager, customerManager));
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve(null, 100, bookManager, customerManager));
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve("isbn-1", -5, bookManager, customerManager));
+    }
+
+    @Test
+    @DisplayName("A reservation for an unknown ISBN is rejected")
+    void unknownBookRejected() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve("0000000000", 100, bookManager, customerManager));
+
+        assertTrue(error.getMessage()
+                .contains("Es existiert kein Buch mit dieser ISBN: 0000000000"));
+        assertTrue(manager.all().isEmpty());
+    }
+
+    @Test
+    @DisplayName("A reservation for an unknown customer is rejected")
+    void unknownCustomerRejected() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> manager.reserve("isbn-1", 999, bookManager, customerManager));
+
+        assertTrue(error.getMessage().contains("Es existiert kein Kunde mit dieser ID: 999"));
+        assertTrue(manager.all().isEmpty());
     }
 
     @Test
@@ -107,29 +138,26 @@ class ReservationManagerTest {
     @Test
     @DisplayName("No reservations on a fresh manager")
     void freshManagerEmpty() {
-        ReservationManager manager = new ReservationManager();
         assertTrue(manager.all().isEmpty());
     }
 
     @Test
     @DisplayName("The same customer cannot queue twice for the same title")
     void duplicateReservationRejected() {
-        ReservationManager manager = new ReservationManager();
-        manager.reserve("isbn-7", 100);
+        manager.reserve("isbn-7", 100, bookManager, customerManager);
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> manager.reserve("isbn-7", 100));
+                () -> manager.reserve("isbn-7", 100, bookManager, customerManager));
 
         assertTrue(error.getMessage().contains("hat bereits eine Vormerkung für ISBN isbn-7"));
-        assertEquals(1, manager.queueSize("isbn-7"));
+        assertEquals(1, manager.queueFor("isbn-7").size());
     }
 
     @Test
     @DisplayName("A customer may queue for two different titles")
     void sameCustomerTwoTitles() {
-        ReservationManager manager = new ReservationManager();
-        manager.reserve("isbn-1", 100);
-        manager.reserve("isbn-2", 100);
+        manager.reserve("isbn-1", 100, bookManager, customerManager);
+        manager.reserve("isbn-2", 100, bookManager, customerManager);
         assertEquals(2, manager.all().size());
     }
 
@@ -140,7 +168,6 @@ class ReservationManagerTest {
         Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
                 + "1,3036959548,999,2024-01-01\n", StandardCharsets.UTF_8);
 
-        ReservationManager manager = new ReservationManager();
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> manager.importReservations(csv.toString(), books(), customers()));
 
@@ -156,7 +183,6 @@ class ReservationManagerTest {
         Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
                 + "1,0000000000,2,2024-01-01\n", StandardCharsets.UTF_8);
 
-        ReservationManager manager = new ReservationManager();
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> manager.importReservations(csv.toString(), books(), customers()));
 
@@ -171,7 +197,6 @@ class ReservationManagerTest {
         Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
                 + "1,3036959548\n", StandardCharsets.UTF_8);
 
-        ReservationManager manager = new ReservationManager();
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> manager.importReservations(csv.toString(), books(), customers()));
 
@@ -187,12 +212,11 @@ class ReservationManagerTest {
         Files.writeString(csv, "id,bookIsbn,customerId,createdAt\n"
                 + "5,3036959548,2,2024-05-01\n", StandardCharsets.UTF_8);
 
-        ReservationManager manager = new ReservationManager();
         manager.importReservations(csv.toString(), books(), customers());
 
-        assertEquals(1, manager.queueSize("3036959548"));
+        assertEquals(1, manager.queueFor("3036959548").size());
         // nextId bleibt hinter der importierten ID zurück.
-        assertEquals(6, manager.reserve("3036959548", 123).id());
+        assertEquals(6, manager.reserve("3036959548", 123, books(), customers()).id());
     }
 
     private static BookManager books() {
@@ -205,6 +229,15 @@ class ReservationManagerTest {
         CustomerManager customers = new CustomerManager();
         customers.importCustomers("/benutzer.csv");
         return customers;
+    }
+
+    /** Books that exist only in memory, so a test can pick its own ISBNs. */
+    private static BookManager booksWithIsbns(String... isbns) {
+        BookManager books = new BookManager();
+        for (String isbn : isbns) {
+            books.addBook(isbn, "Titel " + isbn, List.of("Autor"), 2024, "Ort", "Verlag", 1);
+        }
+        return books;
     }
 
     /** Customers that exist only in memory, so a test can pick its own ids. */

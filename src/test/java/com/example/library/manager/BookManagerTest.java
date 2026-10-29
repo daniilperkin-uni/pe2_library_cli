@@ -106,7 +106,9 @@ class BookManagerTest {
     @Test
     void deletionBlocker_refuses_a_book_that_is_still_reserved() {
         ReservationManager reservationManager = new ReservationManager();
-        reservationManager.reserve("3551551677", 123);
+        CustomerManager customerManager = new CustomerManager();
+        customerManager.importCustomers("/benutzer.csv");
+        reservationManager.reserve("3551551677", 123, bookManager, customerManager);
 
         // Das Buch hat keine Kopien, wird aber noch vorgemerkt.
         assertThat(bookManager.deletionBlocker("3551551677", new BookCopyManager(),

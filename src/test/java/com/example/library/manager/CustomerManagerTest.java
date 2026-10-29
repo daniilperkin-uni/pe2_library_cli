@@ -89,7 +89,9 @@ class CustomerManagerTest {
     @Test
     void deletionBlocker_refuses_a_customer_who_is_still_queued() {
         ReservationManager reservationManager = new ReservationManager();
-        reservationManager.reserve("3551551677", 123);
+        BookManager bookManager = new BookManager();
+        bookManager.importBooks("/bücher.csv");
+        reservationManager.reserve("3551551677", 123, bookManager, customerManager);
 
         assertThat(customerManager.deletionBlocker(123, reservationManager))
                 .contains("steht noch in der Vormerkungs-Warteschlange")

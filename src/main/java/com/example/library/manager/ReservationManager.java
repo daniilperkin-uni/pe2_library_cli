@@ -33,26 +33,38 @@ public class ReservationManager {
      * reservation for the same pair would occupy two places in the FIFO queue
      * and hand the same person the title twice.</p>
      *
-     * <p>This manager owns only its own queue, so it cannot look the ISBN or the
-     * customer up: the caller has to make sure both exist before enqueueing.
-     * {@code LibraryCLI.reserveTitle} does that, and
-     * {@link #importReservations} rejects a saved row whose book or customer is
-     * gone, so a reservation that survived a restart always points at real
-     * entities.</p>
+     * <p>The book and the customer are looked up before anything is enqueued:
+     * an entry that points at an ISBN or a customer id which does not exist
+     * could not be reloaded on the next start, because
+     * {@link #importReservations} rejects exactly that row. Enforcing the
+     * invariant here means every reservation the manager hands out is
+     * saveable.</p>
      *
-     * @param bookIsbn   the ISBN of the requested book
-     * @param customerId the id of the waiting customer
+     * @param bookIsbn        the ISBN of the requested book
+     * @param customerId      the id of the waiting customer
+     * @param bookManager     the manager used to verify the ISBN
+     * @param customerManager the manager used to verify the customer id
      * @return the created reservation
      * @throws IllegalArgumentException when the ISBN is blank, the customer
-     *                                  id is not positive, or the pair is
+     *                                  id is not positive, the book or the
+     *                                  customer does not exist, or the pair is
      *                                  already queued
      */
-    public Reservation reserve(String bookIsbn, int customerId) {
+    public Reservation reserve(String bookIsbn, int customerId, BookManager bookManager,
+                               CustomerManager customerManager) {
         if (bookIsbn == null || bookIsbn.isBlank()) {
             throw new IllegalArgumentException("Buch-ISBN muss angegeben werden");
         }
         if (customerId <= 0) {
             throw new IllegalArgumentException("Kunden-ID muss positiv sein: " + customerId);
+        }
+        if (!bookManager.exists(bookIsbn)) {
+            throw new IllegalArgumentException(
+                    "Es existiert kein Buch mit dieser ISBN: " + bookIsbn);
+        }
+        if (!customerManager.exists(customerId)) {
+            throw new IllegalArgumentException(
+                    "Es existiert kein Kunde mit dieser ID: " + customerId);
         }
         if (hasReservation(bookIsbn, customerId)) {
             throw new IllegalArgumentException("Der Kunde mit ID " + customerId

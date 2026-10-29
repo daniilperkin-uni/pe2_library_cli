@@ -540,8 +540,8 @@ public class LibraryCLI {
      * <p>Availability is deliberately not checked: the queue is a waiting list
      * that the staff consults when a copy comes back, so reserving a title that
      * still has a free copy is allowed. Both the book (by ISBN) and the waiting
-     * customer must exist; unknown values are rejected before anything is
-     * enqueued.</p>
+     * customer must exist; the manager rejects unknown values before anything
+     * is enqueued.</p>
      */
     public void reserveTitle() {
         String isbn = readIsbnOrCancel("ISBN des gewünschten Titels: ");
@@ -553,15 +553,8 @@ public class LibraryCLI {
             return;
         }
         try {
-            if (!bookManager.exists(isbn)) {
-                throw new IllegalArgumentException(
-                        "Es existiert kein Buch mit dieser ISBN: " + isbn);
-            }
-            if (!customerManager.exists(customerId)) {
-                throw new IllegalArgumentException(
-                        "Es existiert kein Kunde mit dieser ID: " + customerId);
-            }
-            var reservation = reservationManager.reserve(isbn, customerId);
+            var reservation = reservationManager.reserve(isbn, customerId, bookManager,
+                    customerManager);
             System.out.println("Vormerkung " + reservation.id() + " für ISBN "
                     + isbn + " von Kunde " + customerId + " angelegt.");
         } catch (IllegalArgumentException e) {

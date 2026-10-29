@@ -115,15 +115,15 @@ class LibraryCLIStateLoadTest {
         customers.importCustomers("/benutzer.csv");
         copies.importBookCopies("/buchkopien.csv", books, customers);
         ReservationManager reservations = new ReservationManager();
-        reservations.reserve("3036959548", 2);
-        reservations.reserve("3036959548", 123);
+        reservations.reserve("3036959548", 2, books, customers);
+        reservations.reserve("3036959548", 123, books, customers);
         CsvExporter.save(dir, books, customers, copies, reservations);
 
         ReservationManager reservations2 = new ReservationManager();
         LibraryCLI.loadState(dir, new BookManager(), new CustomerManager(),
                 new BookCopyManager(), reservations2);
 
-        assertThat(reservations2.queueSize("3036959548")).isEqualTo(2);
+        assertThat(reservations2.queueFor("3036959548")).hasSize(2);
         assertThat(reservations2.all()).extracting(r -> r.customerId())
                 .containsExactly(2, 123);
     }
