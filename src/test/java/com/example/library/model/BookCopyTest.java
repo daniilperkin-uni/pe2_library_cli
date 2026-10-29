@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BookCopyTest {
 
@@ -23,6 +24,16 @@ class BookCopyTest {
         assertThat(copy.isLent()).isTrue();
         assertThat(copy.getLoanDate()).isEqualTo(loan);
         assertThat(copy.getCustomerID()).isEqualTo(7);
+    }
+
+    @Test
+    void constructor_rejects_null_added_to_library() {
+        // QA-002: the save format stores addedToLibrary as yyyy-MM-dd, so a copy
+        // without that date cannot be written back; CsvExporter used to throw a
+        // NullPointerException on exit and discard the whole session state.
+        assertThatThrownBy(() -> new BookCopy(1, null, "A1", null, false, null, -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Datum der Aufnahme");
     }
 
     @Test

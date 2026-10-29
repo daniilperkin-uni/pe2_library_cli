@@ -30,9 +30,17 @@ public class BookCopy {
      * @param lent          whether this copy is currently lent out
      * @param loanDate      the date of the current loan, or {@code null} if not lent
      * @param customerID    the ID of the customer who borrowed this copy, or {@code -1} if not lent
+     * @throws IllegalArgumentException if {@code addedToLibrary} is {@code null}
      */
     public BookCopy(long id, Book book, String shelfLocation, Date addedToLibrary,
                     boolean lent, LocalDate loanDate, int customerID) {
+        // Das Speicherformat schreibt das Aufnahmedatum als yyyy-MM-dd; ein
+        // null-Wert ließe sich nicht zurückschreiben und brachte den Export
+        // beim Beenden zum Absturz. Darum hier ablehnen statt später.
+        if (addedToLibrary == null) {
+            throw new IllegalArgumentException(
+                    "Das Datum der Aufnahme darf nicht null sein.");
+        }
         this.id = id;
         this.book = book;
         this.shelfLocation = shelfLocation;
