@@ -11,6 +11,9 @@ system. It supports creating, importing, listing, searching and deleting books
 and book copies, managing customers, performing loan and return operations,
 and generating various reports.
 
+**Download:** [pe2-library-cli-1.0.0.jar](https://github.com/daniilperkin-uni/pe2_library_cli/releases/latest/download/pe2-library-cli-1.0.0.jar)
+— a runnable JAR for Java 21, no Maven needed.
+
 **Live showcase:** a real session (German menu, loan, late-return fine, ISBN
 reservations) replays in the browser on the
 [uni-old-projects site](https://daniilperkin-uni.github.io/uni-old-projects/#pe2_library_cli).
@@ -95,15 +98,15 @@ Run the application:
 
 ```bash
 ./mvnw clean package
-java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar [data-dir]
+java -jar target/pe2-library-cli-1.0.0.jar [data-dir]
 ```
 
 `--help` / `-h` prints the usage, `--version` / `-V` prints the packaged
 version; both exit before any data is touched.
 
 ```bash
-java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar --help
-java -jar target/pe2-library-cli-1.0-SNAPSHOT.jar --version
+java -jar target/pe2-library-cli-1.0.0.jar --help
+java -jar target/pe2-library-cli-1.0.0.jar --version
 ```
 
 `data-dir` defaults to `./data`. If it already contains saved CSV files they

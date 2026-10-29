@@ -6,7 +6,7 @@
 
     <groupId>io.github.daniilperkin</groupId>
     <artifactId>pe2-library-cli</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>PE2 Library CLI</name>
     <description>Command-line library management system (books, copies, customers, loans, reservations).</description>
 
@@ -76,7 +76,7 @@
                                 Ohne addDefaultImplementationEntries steht keine
                                 Implementation-Version im Manifest, dann meldet
                                 die Versionsabfrage nur "dev". Der Eintrag
-                                schreibt die Projektversion (1.0-SNAPSHOT) hinein.
+                                schreibt die Projektversion (1.0.0) hinein.
                             -->
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
