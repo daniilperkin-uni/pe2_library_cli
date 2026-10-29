@@ -186,4 +186,20 @@ class BookCopyManagerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("erwartet mindestens 7 Spalten, gefunden 5");
     }
+
+    @Test
+    void importBookCopies_rejects_an_impossible_date(@TempDir Path dir) throws IOException {
+        Path csv = dir.resolve("buchkopien.csv");
+        Files.writeString(csv, "id,bookIsbn,shelfLocation,addedToLibrary,lent,lentDate,customerID\n"
+                + "7,3036959548,SF1,2024-02-31,no,,\n", StandardCharsets.UTF_8);
+
+        // QA-X1: ein milder SimpleDateFormat haette den 31. Februar still auf
+        // den 2. Maerz gerollt und ein falsches Datum in den Bestand geschrieben.
+        assertThatThrownBy(() -> bookCopyManager.importBookCopies(csv.toString(), bookManager,
+                customerManager))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(java.text.ParseException.class)
+                .hasRootCauseMessage("Unparseable date: \"2024-02-31\"");
+        assertThat(bookCopyManager.getBookCopies()).hasSize(2);
+    }
 }

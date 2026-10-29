@@ -148,6 +148,10 @@ public class BookCopyManager {
         try {
             List<CsvImporter.Row> rows = CsvImporter.parseRows(input, true);
             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            // Streng parsen: SimpleDateFormat rollt "2024-02-31" sonst still auf
+            // den 2. März weiter, und der Bestand bekäme ein falsches Datum.
+            // lentDate wird daneben mit LocalDate.parse ebenfalls streng geprüft.
+            formatter.setLenient(false);
             for (CsvImporter.Row row : rows) {
                 // Fünf Spalten sind immer nötig; ein verliehener Datensatz
                 // braucht zusätzlich Leihdatum und Kunden-ID. Ohne die Prüfung
